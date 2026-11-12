@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: auditor-cea-web
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app_web_auditor.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: META_MENSUAL_TOTAL
+        value: "100"
+      - key: META_MENSUAL_JAVIER_TORRES
+        value: "30"
