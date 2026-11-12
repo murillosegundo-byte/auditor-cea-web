@@ -14,14 +14,18 @@ Incluye:
 """
 
 import datetime
+import hashlib
+import hmac
 import io
 import json
 import logging
 import os
 import re
+import secrets
 import threading
 import time
 import urllib.request
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -83,6 +87,187 @@ load_dotenv(BASE_DIR / ".env")
 PORT = int(os.getenv("PORT", "10000"))
 RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "").strip()
 DEFAULT_EXCEL_PATH = BASE_DIR / "matriculas11112026.xlsx"
+
+# =============================================================================
+# SEGURIDAD Y CONTROL DE ACCESO (LOGIN GERENCIAL)
+# =============================================================================
+AUDITOR_USER = os.getenv("AUDITOR_USER", "admin").strip()
+AUDITOR_PASSWORD = os.getenv("AUDITOR_PASSWORD", "AutoOriente2026*").strip()
+SESSION_SECRET = os.getenv("SESSION_SECRET", secrets.token_hex(32))
+COOKIE_NAME = "cea_auditor_session"
+
+
+def _generar_token_sesion(usuario: str) -> str:
+    exp = int(time.time()) + 86400 * 7  # 7 días de sesión activa
+    payload = f"{usuario}:{exp}"
+    firma = hmac.new(SESSION_SECRET.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{payload}:{firma}"
+
+
+def _verificar_token_sesion(token: str) -> bool:
+    if not token or token.count(":") != 2:
+        return False
+    usuario, exp_str, firma = token.split(":", 2)
+    try:
+        if int(exp_str) < int(time.time()):
+            return False
+    except ValueError:
+        return False
+    payload = f"{usuario}:{exp_str}"
+    esperada = hmac.new(SESSION_SECRET.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(firma, esperada) and usuario == AUDITOR_USER
+
+
+HTML_LOGIN = r"""<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acceso Restringido | Auditoría Contable CEA Auto Oriente</title>
+  <style>
+    :root {
+      --bg: #0e1626;
+      --card: #131d31;
+      --border: #1e2d4a;
+      --primary: #3b82f6;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: radial-gradient(circle at top, #172a4f 0%, #0e1626 65%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 420px;
+      padding: 34px 30px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    }
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .badge-cea {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 19px;
+      box-shadow: 0 4px 14px rgba(59,130,246,0.45);
+    }
+    h1 { font-size: 18px; font-weight: 700; line-height: 1.3; }
+    p.sub { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+    .field { margin-bottom: 16px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; }
+    input {
+      width: 100%;
+      padding: 11px 13px;
+      border-radius: 8px;
+      border: 1px solid #283a5e;
+      background: #09101d;
+      color: #fff;
+      font-size: 14px;
+    }
+    input:focus { outline: none; border-color: var(--primary); }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: background 0.15s;
+    }
+    button:hover { background: #2563eb; }
+    .err-msg {
+      background: rgba(239,68,68,0.15);
+      border: 1px solid #dc2626;
+      color: #fca5a5;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .footer-note {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 11.5px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="logo-row">
+      <div class="badge-cea">CEA</div>
+      <div>
+        <h1>Auditoría Contable y Cartera</h1>
+        <p class="sub">CEA Auto Oriente • Acceso Gerencial</p>
+      </div>
+    </div>
+    <div id="errBox" class="err-msg">Usuario o contraseña incorrectos.</div>
+    <form id="loginForm">
+      <div class="field">
+        <label>Usuario Autorizado</label>
+        <input type="text" id="userInput" name="username" placeholder="Ej: admin" required autocomplete="username" />
+      </div>
+      <div class="field">
+        <label>Contraseña de Seguridad</label>
+        <input type="password" id="passInput" name="password" placeholder="••••••••••••" required autocomplete="current-password" />
+      </div>
+      <button type="submit">🔒 Ingresar al Sistema</button>
+    </form>
+    <div class="footer-note">
+      🛡️ Información financiera confidencial protegida por sesión cifrada HMAC-SHA256.
+    </div>
+  </div>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('errBox');
+      errBox.style.display = 'none';
+      const username = document.getElementById('userInput').value.trim();
+      const password = document.getElementById('passInput').value;
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          window.location.href = '/';
+        } else {
+          errBox.textContent = data.error || 'Credenciales inválidas.';
+          errBox.style.display = 'block';
+        }
+      } catch (err) {
+        errBox.textContent = 'Error de conexión con el servidor.';
+        errBox.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>
+"""
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -414,6 +599,7 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
       <button type="button" class="btn btn-outline" onclick="toggleTarifas()">⚙️ Tarifas por Categoría</button>
       <a href="/api/download/excel" class="btn btn-success">📊 Descargar Excel Multi-Pestaña (.xlsx)</a>
       <a href="/api/download/pdf" class="btn btn-danger">📄 Descargar PDF Ejecutivo</a>
+      <a href="/logout" class="btn btn-outline" title="Cerrar sesión segura">🔒 Salir</a>
     </div>
   </header>
 
@@ -1076,17 +1262,44 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
 
 
 class AuditorWebHandler(BaseHTTPRequestHandler):
-    def _send_json(self, data: Dict[str, Any], status: int = 200) -> None:
+    def _send_json(self, data: Dict[str, Any], status: int = 200, extra_headers: Optional[Dict[str, str]] = None) -> None:
         raw = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(raw)))
+        if extra_headers:
+            for k, v in extra_headers.items():
+                self.send_header(k, v)
         self.end_headers()
         self.wfile.write(raw)
 
+    def _is_authenticated(self) -> bool:
+        cookie_hdr = self.headers.get("Cookie", "")
+        if not cookie_hdr:
+            return False
+        c = SimpleCookie()
+        try:
+            c.load(cookie_hdr)
+        except Exception:
+            return False
+        if COOKIE_NAME not in c:
+            return False
+        return _verificar_token_sesion(c[COOKIE_NAME].value)
+
     def do_GET(self) -> None:
-        if self.path in ("/", "/index.html"):
-            raw = HTML_DASHBOARD.encode("utf-8")
+        if self.path == "/health":
+            self._send_json({"ok": True, "service": "Auditor CEA Auto Oriente Multi-Curso"})
+            return
+
+        if self.path == "/logout":
+            self.send_response(302)
+            self.send_header("Location", "/login")
+            self.send_header("Set-Cookie", f"{COOKIE_NAME}=; Path=/; HttpOnly; Max-Age=0; SameSite=Lax")
+            self.end_headers()
+            return
+
+        if self.path == "/login":
+            raw = HTML_LOGIN.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(raw)))
@@ -1094,8 +1307,25 @@ class AuditorWebHandler(BaseHTTPRequestHandler):
             self.wfile.write(raw)
             return
 
-        if self.path == "/health":
-            self._send_json({"ok": True, "service": "Auditor CEA Auto Oriente Multi-Curso"})
+        if not self._is_authenticated():
+            if self.path.startswith("/api/"):
+                self._send_json({"ok": False, "error": "Sesión expirada o no autorizada."}, 401)
+            else:
+                raw = HTML_LOGIN.encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+            return
+
+        if self.path in ("/", "/index.html"):
+            raw = HTML_DASHBOARD.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
             return
 
         if self.path == "/api/data":
@@ -1138,6 +1368,28 @@ class AuditorWebHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self) -> None:
+        if self.path == "/api/login":
+            length = int(self.headers.get("Content-Length", "0"))
+            body_raw = self.rfile.read(length) if length > 0 else b"{}"
+            try:
+                payload = json.loads(body_raw.decode("utf-8"))
+            except Exception:
+                payload = {}
+            user_in = str(payload.get("username", "")).strip()
+            pass_in = str(payload.get("password", ""))
+            if hmac.compare_digest(user_in, AUDITOR_USER) and hmac.compare_digest(pass_in, AUDITOR_PASSWORD):
+                token = _generar_token_sesion(AUDITOR_USER)
+                cookie_val = f"{COOKIE_NAME}={token}; Path=/; HttpOnly; Max-Age=604800; SameSite=Lax"
+                self._send_json({"ok": True}, 200, extra_headers={"Set-Cookie": cookie_val})
+            else:
+                time.sleep(0.6)
+                self._send_json({"ok": False, "error": "Usuario o contraseña incorrectos."}, 401)
+            return
+
+        if not self._is_authenticated():
+            self._send_json({"ok": False, "error": "No autorizado. Inicie sesión primero."}, 401)
+            return
+
         if self.path == "/api/upload":
             try:
                 content_type = self.headers.get("Content-Type", "")
