@@ -13,34 +13,19 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import pytz
-
 BASE_DIR = Path(__file__).resolve().parent
 TOKEN_CALENDAR_PATH = BASE_DIR / "token_calendar.json"
 TOKEN_FALLBACK_PATH = BASE_DIR / "token.json"
 CREDS_CALENDAR_PATH = BASE_DIR / "credentials_calendar_oauth.json"
 AGENDA_LOCAL_PATH = BASE_DIR / "agenda_eventos_cea.json"
 
-_DEFAULT_CALENDAR_TOKEN_REV_B64 = (
-    "==Qfio1NykjN2AjL5AjOyQjOwIDVxITLwETL2IDMyICI6ISeylGc4VmIgwiIiAiOiQnb192YjFmIgwiIt92YuMXawFWZsd2bvdmIgojIulWYt9GZfV2cyVmdp5WdiAC"
-    "LdJichRmblxWYj9Ca0VXYv02bj5ycpBXYlx2Zv92Zuc3d39yL6MHc0RHaisFI6IyclB3bjNnIgwiIDZ2U2EldNBFbTpVd1I1XH9mW6RkMDZWWahVYw0CWQN1QPdkIgoj"
-    "I0VmcjV2cfRnbllGbjJCIsISbvNmL05WZ052bjJXZzVXZsd2bvdmLzBHch5SblNXazUmZt1Wb11mds52avpWOs12M2UTczFDc0NDZ50SNzYDM4IzM5MTN4ICI6ICZp9F"
-    "duVWasNmIgwiIuV2avR3Lt92YuMXawFWZsd2bvdmLygGd1F2bv8iOzBHd0hmIgojIpJXdf5WZr9GdiACLiUUUGtmaHREToNmQJljeEdWYBVXaaFTTx0kaxMHNGlHTpZj"
-    "a3gXYtNzbndGW5YXYwlDUSdjRzUGdO9WT4l1MY92VDRmcJlDTtY0dONVVBdUQBJVQJl1ZDFlZ2s0Z2YVVzgjU1AzLvEjIgojIuV2avR3XoNXZyZWZyJCIsIyNwIDMRdT"
-    "Rrh0dUlzTll1MNFVZWlTdrJnd1lWTyg1RIFlRTVkUBNVUSF0SZd2QhNEbDJmNtFTUhNUQUpVTUdULIp2YJJnR2YXYXx0Z49GR58mV2AjcHBnYiBzMrlkSVBXVYV0NTZU"
-    "WxEXMopmWlhTbm1CeOJGcydWQVJHdBNnUvp0dtFHVpNFTPRzSItWOtAVe6FzU2MDMOhWeFRnahFnYGFVZR10R1QXQfZmdPZGM1IlRCVEZltEWIJWNQd0aH1UaQJUQfF0"
-    "ax9GUwQzRIR0YW91V0olaxoVdKpmaOdTYBRlcjhUNRRHMTVXe6t0Q4cndtN0NwgVQwEmL5ITY5JCI6Iiblt2b0Jye"
+TELEGRAM_AGENDA_TOKEN = (
+    os.getenv("TELEGRAM_AGENDA_TOKEN", "").strip()
+    or os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 )
-
-_DEFAULT_TG_AGENDA_REV_B64 = "==gL1RDM4V2Y0h2Z19GZzV2Y0N2b2V2Y1RXY4V2Z1JXY0N2b19GZzV2Y"
-TELEGRAM_AGENDA_TOKEN = os.getenv(
-    "TELEGRAM_AGENDA_TOKEN",
-    base64.b64decode("==QMiLQ01xM0UpU00P6c3d2d3Drv6kR4DRX6RGAA:999832978"[::-1].encode("utf-8")).decode("utf-8", errors="ignore")
-    if False else "".join(reversed("QiLQ01xMHpU00P6c_3d2Dr6vkR4DRX6RGAA:999832978")),
-).strip()
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 TIMEZONE_STR = "America/Bogota"
-LOCAL_TZ = pytz.timezone(TIMEZONE_STR)
+LOCAL_TZ = datetime.timezone(datetime.timedelta(hours=-5))
 
 USUARIO_CHAT_ID: Optional[str] = os.getenv("AGENDA_CHAT_ID", "") or os.getenv("ADMIN_CHAT_ID", "")
 EVENTOS_NOTIFICADOS = set()
@@ -119,15 +104,15 @@ def _guardar_eventos_locales(eventos: List[Dict[str, Any]]) -> None:
 
 
 def get_calendar_service():
-    """Autentica con Google Calendar usando token_calendar.json, token.json o el token embebido ofuscado."""
+    """Autentica con Google Calendar usando token_calendar.json, token.json o GOOGLE_CALENDAR_TOKEN_JSON."""
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
     from googleapiclient.discovery import build
 
-    if not TOKEN_CALENDAR_PATH.exists() and not TOKEN_FALLBACK_PATH.exists() and _DEFAULT_CALENDAR_TOKEN_REV_B64:
+    env_token = os.getenv("GOOGLE_CALENDAR_TOKEN_JSON", "").strip()
+    if env_token and env_token.startswith("{") and not TOKEN_CALENDAR_PATH.exists():
         try:
-            raw_json = base64.b64decode(_DEFAULT_CALENDAR_TOKEN_REV_B64[::-1].encode("ascii")).decode("utf-8")
-            TOKEN_CALENDAR_PATH.write_text(raw_json, encoding="utf-8")
+            TOKEN_CALENDAR_PATH.write_text(env_token, encoding="utf-8")
         except Exception:
             pass
 
@@ -270,7 +255,7 @@ def crear_evento_agenda(
     try:
         service = get_calendar_service()
         h, m = map(int, hora_usar.split(":")[:2])
-        inicio_dt = LOCAL_TZ.localize(datetime.datetime.strptime(f"{fecha_usar} {h:02d}:{m:02d}", "%Y-%m-%d %H:%M"))
+        inicio_dt = datetime.datetime.strptime(f"{fecha_usar} {h:02d}:{m:02d}", "%Y-%m-%d %H:%M").replace(tzinfo=LOCAL_TZ)
         fin_dt = inicio_dt + datetime.timedelta(minutes=int(duracion_min or 60))
         cuerpo: Dict[str, Any] = {
             "summary": titulo.strip(),
