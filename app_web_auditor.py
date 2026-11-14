@@ -341,6 +341,18 @@ def _guardar_robot_config(nuevos: Dict[str, Any]) -> Dict[str, str]:
     for k in ("tg_token", "tg_chat", "wa_url", "wa_token", "wa_phone"):
         if k in nuevos and str(nuevos[k]).strip():
             cfg[k] = str(nuevos[k]).strip()
+    wa_tk_val = str(cfg.get("wa_token", "")).strip()
+    if re.match(r"^\d{8,12}:[A-Za-z0-9_-]{25,}$", wa_tk_val) and not cfg.get("tg_token"):
+        cfg["tg_token"] = wa_tk_val
+    if cfg.get("tg_token"):
+        try:
+            bot_agenda_cea._guardar_config_agenda(
+                tg_token=cfg["tg_token"],
+                chat_id=cfg.get("tg_chat", "") or "1567561963",
+            )
+            bot_agenda_cea.iniciar_daemon_agenda_telegram()
+        except Exception:
+            pass
     try:
         ROBOT_CONFIG_PATH.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
     except Exception as exc:
@@ -393,10 +405,35 @@ def _enviar_documento_telegram_bytes(
     token: Optional[str] = None,
 ) -> Tuple[bool, str]:
     cfg = _cargar_robot_config()
-    tk = (token or cfg.get("tg_token") or os.getenv("TELEGRAM_BOT_TOKEN", "")).strip()
-    cid = (chat_id or cfg.get("tg_chat") or os.getenv("TELEGRAM_CHAT_IDS", "") or os.getenv("ADMIN_CHAT_ID", "")).split(",")[0].strip()
+    wa_tk_candidate = str(cfg.get("wa_token", "")).strip()
+    tk_from_wa = wa_tk_candidate if re.match(r"^\d{8,12}:[A-Za-z0-9_-]{25,}$", wa_tk_candidate) else ""
+    tk_from_agenda = ""
+    try:
+        tk_from_agenda = bot_agenda_cea.obtener_token_telegram_agenda()
+    except Exception:
+        pass
+    tk = (
+        token
+        or cfg.get("tg_token")
+        or tk_from_wa
+        or tk_from_agenda
+        or os.getenv("TELEGRAM_BOT_TOKEN", "")
+        or os.getenv("TELEGRAM_AGENDA_TOKEN", "")
+    ).strip()
+    if tk == "TU_TELEGRAM_BOT_TOKEN":
+        tk = ""
+    cid = (
+        chat_id
+        or cfg.get("tg_chat")
+        or os.getenv("TELEGRAM_CHAT_IDS", "")
+        or os.getenv("ADMIN_CHAT_ID", "")
+        or "1567561963"
+    ).split(",")[0].strip()
     if not tk or not cid:
-        return False, "Falta configurar TELEGRAM_BOT_TOKEN o el Chat ID destino en el Módulo 6."
+        return False, (
+            "Falta pegar el Token del Bot de Telegram en '⚙️ Configuración de Telegram y WhatsApp' "
+            "aquí abajo (pega tu TELEGRAM_TOKEN y haz clic en Guardar)."
+        )
 
     boundary = "----CEARobotBoundary" + secrets.token_hex(12)
     lines = []
@@ -1644,21 +1681,22 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
             </div>
             <div style="grid-column: span 2;">
               <label class="field-label">Cédula / Nombre Alumno o Placa (Si aplica)</label>
-              <input type="text" id="rb_criterio" placeholder="Ej: 1098800332 o nombre del alumno / instructor" />
+              <input type="text" id="rb_criterio" list="listaAlumnosRobot" placeholder="Ej: 1098800332 o nombre del alumno / instructor" />
+              <datalist id="listaAlumnosRobot"></datalist>
             </div>
             <div>
               <label class="field-label">✈️ Chat ID Telegram Destino</label>
-              <input type="text" id="rb_tg_chat" placeholder="Vacío = Admin por defecto" />
+              <input type="text" id="rb_tg_chat" value="1567561963" placeholder="Ej: 1567561963" />
             </div>
             <div>
-              <label class="field-label">📲 Teléfono WhatsApp (Ej: 57310...)</label>
-              <input type="text" id="rb_wa_phone" placeholder="Ej: 573154239997" />
+              <label class="field-label">📲 Teléfono WhatsApp (Ej: 3155680575)</label>
+              <input type="text" id="rb_wa_phone" value="3155680575" placeholder="Ej: 3155680575" />
             </div>
             <div>
-              <button type="button" class="btn btn-primary" style="width:100%; justify-content:center;" onclick="despacharReporteRobot('telegram')">✈️ Enviar PDF/Excel a Telegram</button>
+              <button type="button" class="btn btn-primary" style="width:100%; justify-content:center;" onclick="despacharReporteRobot('TELEGRAM')">✈️ Enviar PDF/Excel a Telegram</button>
             </div>
             <div>
-              <button type="button" class="btn btn-success" style="width:100%; justify-content:center;" onclick="despacharReporteRobot('whatsapp')">📲 Enviar a WhatsApp</button>
+              <button type="button" class="btn btn-success" style="width:100%; justify-content:center;" onclick="despacharReporteRobot('WHATSAPP')">📲 Enviar a WhatsApp</button>
             </div>
           </div>
           <div id="robotDispatchToast" class="status-toast"></div>
@@ -1679,10 +1717,12 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
                 <input type="file" id="rb_file_input" accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png" required />
               </div>
               <div>
-                <label class="field-label">Auto-Enviar a Telegram</label>
+                <label class="field-label">Acción de Despacho</label>
                 <select id="rb_auto_tg">
-                  <option value="SI">✅ Sí, enviar a Telegram</option>
-                  <option value="NO">Solo archivar y clasificar</option>
+                  <option value="TELEGRAM">✈️ Clasificar + Enviar a Telegram</option>
+                  <option value="WHATSAPP">📲 Clasificar + Enviar a WhatsApp</option>
+                  <option value="AMBOS">🚀 Clasificar + Enviar a Telegram y WhatsApp</option>
+                  <option value="SOLO_CLASIFICAR">📂 Solo clasificar y archivar</option>
                 </select>
               </div>
               <div>
@@ -1694,26 +1734,30 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
         </div>
       </div>
 
-      <div class="panel" style="margin-bottom:18px;">
+      <div class="panel" style="margin-bottom:18px; border-color:#3b82f6;">
         <div class="panel-title">
-          <span>⚙️ Configuración de Pasarela WhatsApp API (Cloud API / Evolution API / WAHA) y Telegram</span>
-          <span class="badge badge-purple">Opcional para envío silencioso en 2do plano</span>
+          <span>⚙️ Configuración de Telegram Bot + Pasarela WhatsApp API (Cloud API / Evolution API / WAHA)</span>
+          <span class="badge badge-purple">Conecta aquí tu Token de Telegram para envío directo de PDFs</span>
         </div>
         <div class="form-grid-4">
           <div>
-            <label class="field-label">URL Endpoint WhatsApp API</label>
+            <label class="field-label">🤖 Token del Bot de Telegram (`TELEGRAM_TOKEN`) *</label>
+            <input type="password" id="cfg_tg_token" placeholder="Pega aquí tu token de BotFather..." />
+          </div>
+          <div>
+            <label class="field-label">✈️ Chat ID Telegram Predeterminado</label>
+            <input type="text" id="cfg_tg_chat" value="1567561963" placeholder="Ej: 1567561963" />
+          </div>
+          <div>
+            <label class="field-label">📲 URL WhatsApp API (Opcional)</label>
             <input type="text" id="cfg_wa_url" placeholder="https://api.tudominio.com/message/sendMedia/..." />
           </div>
           <div>
-            <label class="field-label">Token / API Key WhatsApp</label>
-            <input type="password" id="cfg_wa_token" placeholder="Bearer / Token de tu API" />
-          </div>
-          <div>
-            <label class="field-label">Chat ID Telegram Predeterminado</label>
-            <input type="text" id="cfg_tg_chat" placeholder="Ej: 6155643145 o -100..." />
-          </div>
-          <div>
-            <button type="button" class="btn btn-outline" style="width:100%; justify-content:center;" onclick="guardarConfigRobot()">💾 Guardar Configuración Robot</button>
+            <label class="field-label">🔑 Token / API Key (WhatsApp o Telegram)</label>
+            <div style="display:flex; gap:6px;">
+              <input type="password" id="cfg_wa_token" placeholder="Token API" />
+              <button type="button" class="btn btn-primary" style="white-space:nowrap;" onclick="guardarConfigRobot()">💾 Guardar</button>
+            </div>
           </div>
         </div>
         <div id="robotCfgToast" class="status-toast"></div>
@@ -2714,12 +2758,11 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
         document.getElementById('nav_badge_inas').textContent = `${data.inasistencias.kpis.total} (${data.inasistencias.kpis.pendientes} Pend.)`;
         document.getElementById('nav_badge_pesv').textContent = `${data.mantenimientos.kpis.total} Mant.`;
 
-        // Poblar selector de alumnos en el Módulo 6 (Robot Gestor)
-        const rbAlSel = document.getElementById('rb_alumno_select');
-        if (rbAlSel && data.clases && data.clases.alumnos) {
-          const curAl = rbAlSel.value;
-          rbAlSel.innerHTML = data.clases.alumnos.map(a =>
-            `<option value="${a.cedula || a.nombre}|${a.categoria}" ${(`${a.cedula || a.nombre}|${a.categoria}` === curAl) ? 'selected' : ''}>${a.nombre} (${a.categoria} - ${a.clases_completadas}/${a.total_requerido} - ${a.estado_curso})</option>`
+        // Poblar datalist de alumnos en el Módulo 6 (Robot Gestor)
+        const dlAl = document.getElementById('listaAlumnosRobot');
+        if (dlAl && data.clases && data.clases.alumnos) {
+          dlAl.innerHTML = data.clases.alumnos.map(a =>
+            `<option value="${a.cedula || a.nombre}|${a.categoria}">${a.nombre} (${a.categoria} - ${a.clases_completadas}/${a.total_requerido} - ${a.estado_curso})</option>`
           ).join('');
         }
 
@@ -3282,16 +3325,24 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
       window.open(`https://wa.me/${cleanTel}?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
-    async function despacharReporteRobot(canal) {
-      const reporte = document.getElementById('rb_tipo_reporte').value;
-      const alVal = (document.getElementById('rb_alumno_select') || {}).value || '';
-      const [alumno_q, categoria] = alVal.split('|');
-      const chat_id = (document.getElementById('rb_chat_id') || {}).value.trim();
-      const wa_phone = (document.getElementById('rb_wa_phone') || {}).value.trim();
-      const toast = document.getElementById('rbDespachoToast');
+    async function despacharReporteRobot(canalRaw) {
+      const canal = String(canalRaw || 'TELEGRAM').trim().toUpperCase();
+      const reporte = ((document.getElementById('rb_tipo_reporte') || {}).value || 'cartera_pdf').trim().toUpperCase();
+      const criterioRaw = ((document.getElementById('rb_criterio') || document.getElementById('rb_alumno_select') || {}).value || '').trim();
+      const [alumno_q, categoria] = criterioRaw.includes('|') ? criterioRaw.split('|') : [criterioRaw, 'A2'];
+      const chat_id = ((document.getElementById('rb_tg_chat') || document.getElementById('rb_chat_id') || {}).value || '1567561963').trim();
+      const wa_phone = ((document.getElementById('rb_wa_phone') || {}).value || '3155680575').trim();
+      const toast = document.getElementById('robotDispatchToast') || document.getElementById('rbDespachoToast');
 
-      toast.className = 'status-toast ok';
-      toast.textContent = '⏳ Generando documento oficial, clasificando en Archivo_Procesado y despachando...';
+      let waWin = null;
+      if (canal === 'WHATSAPP' || canal === 'AMBOS') {
+        waWin = window.open('about:blank', '_blank');
+      }
+
+      if (toast) {
+        toast.className = 'status-toast ok';
+        toast.textContent = '⏳ Generando documento oficial, clasificando en Archivo_Procesado y despachando...';
+      }
 
       try {
         const res = await fetch('/api/bot/action', {
@@ -3300,33 +3351,56 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
           body: JSON.stringify({
             action: 'robot_despachar_reporte',
             reporte,
-            alumno_q: alumno_q || '',
-            categoria: categoria || 'A2',
+            alumno_q: (alumno_q || '').trim(),
+            categoria: (categoria || 'A2').trim(),
             canal,
             chat_id,
             wa_phone
           })
         });
         const data = await res.json();
-        toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
-        toast.textContent = (data.ok ? '✅ ' : '❌ ') + (data.message || '');
+        if (toast) {
+          toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+          let htmlMsg = `<span>${data.ok ? '✅ ' : '❌ '}${data.message || ''}</span>`;
+          if (data.download_url) {
+            htmlMsg += ` &nbsp;<a href="${data.download_url}" target="_blank" class="btn btn-outline" style="padding:3px 9px; font-size:11px; margin-left:6px;">📥 Descargar Archivo</a>`;
+          }
+          if (data.wa_url) {
+            htmlMsg += ` &nbsp;<a href="${data.wa_url}" target="_blank" class="btn btn-success" style="padding:3px 9px; font-size:11px; margin-left:6px;">📲 Abrir WhatsApp</a>`;
+          }
+          toast.innerHTML = htmlMsg;
+        }
         if (data.wa_url && (canal === 'WHATSAPP' || canal === 'AMBOS')) {
-          window.open(data.wa_url, '_blank');
+          if (waWin && !waWin.closed) {
+            waWin.location.href = data.wa_url;
+          } else {
+            window.open(data.wa_url, '_blank');
+          }
+        } else if (waWin && !waWin.closed) {
+          waWin.close();
         }
         cargarBitacoraRobot();
       } catch (err) {
-        toast.className = 'status-toast err';
-        toast.textContent = '❌ Error: ' + err;
+        if (waWin && !waWin.closed) waWin.close();
+        if (toast) {
+          toast.className = 'status-toast err';
+          toast.textContent = '❌ Error: ' + err;
+        }
       }
     }
 
     async function guardarConfigRobot() {
-      const tg_token = document.getElementById('cfg_tg_token').value.trim();
-      const tg_chat = document.getElementById('cfg_tg_chat').value.trim();
-      const wa_url = document.getElementById('cfg_wa_url').value.trim();
-      const wa_token = document.getElementById('cfg_wa_token').value.trim();
-      const wa_phone = document.getElementById('cfg_wa_phone').value.trim();
-      const toast = document.getElementById('cfgRobotToast');
+      const tg_token = ((document.getElementById('cfg_tg_token') || {}).value || '').trim();
+      const tg_chat = ((document.getElementById('cfg_tg_chat') || {}).value || '1567561963').trim();
+      const wa_url = ((document.getElementById('cfg_wa_url') || {}).value || '').trim();
+      const wa_token = ((document.getElementById('cfg_wa_token') || {}).value || '').trim();
+      const wa_phone = ((document.getElementById('cfg_wa_phone') || document.getElementById('rb_wa_phone') || {}).value || '3155680575').trim();
+      const toast = document.getElementById('robotCfgToast') || document.getElementById('cfgRobotToast');
+
+      if (toast) {
+        toast.className = 'status-toast ok';
+        toast.textContent = '⏳ Guardando configuración del Robot y conectando con Telegram...';
+      }
 
       const res = await fetch('/api/bot/action', {
         method: 'POST',
@@ -3337,8 +3411,10 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
         })
       });
       const data = await res.json();
-      toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
-      toast.textContent = (data.ok ? '✅ ' : '❌ ') + (data.message || '');
+      if (toast) {
+        toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+        toast.textContent = (data.ok ? '✅ ' : '❌ ') + (data.message || '');
+      }
     }
 
     async function cargarBitacoraRobot() {
@@ -3351,8 +3427,8 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
         if (cfg.tg_chat && document.getElementById('cfg_tg_chat') && !document.getElementById('cfg_tg_chat').value) {
           document.getElementById('cfg_tg_chat').value = cfg.tg_chat;
         }
-        if (cfg.wa_phone && document.getElementById('cfg_wa_phone') && !document.getElementById('cfg_wa_phone').value) {
-          document.getElementById('cfg_wa_phone').value = cfg.wa_phone;
+        if (cfg.wa_phone && document.getElementById('rb_wa_phone') && !document.getElementById('rb_wa_phone').value) {
+          document.getElementById('rb_wa_phone').value = cfg.wa_phone;
         }
         if (cfg.wa_url && document.getElementById('cfg_wa_url') && !document.getElementById('cfg_wa_url').value) {
           document.getElementById('cfg_wa_url').value = cfg.wa_url;
@@ -3364,14 +3440,17 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
 
         const tbody = document.getElementById('robotLogTbody');
         if (tbody) {
-          tbody.innerHTML = logs.map(l => `<tr>
-            <td><code>${l.fecha}</code></td>
-            <td><b>${l.archivo_original}</b></td>
-            <td><span class="badge badge-info">${l.tipo_clasificado}</span></td>
-            <td><code style="font-size:11px; color:#93c5fd;">${l.ruta_respaldo}</code></td>
-            <td><span class="badge badge-purple">${l.canal}</span></td>
-            <td><span class="badge badge-success">${l.estado}</span></td>
-          </tr>`).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--muted); padding:18px;">Aún no se han clasificado archivos en esta sesión. Usa el clasificador o despacha cualquier reporte arriba.</td></tr>';
+          tbody.innerHTML = logs.map(l => {
+            const isErr = String(l.estado || '').includes('Error');
+            return `<tr>
+              <td><code>${l.fecha}</code></td>
+              <td><b>${l.archivo_original}</b></td>
+              <td><span class="badge badge-info">${l.tipo_clasificado}</span></td>
+              <td><code style="font-size:11px; color:#93c5fd;">${l.ruta_respaldo}</code></td>
+              <td><span class="badge badge-purple">${l.canal}</span></td>
+              <td><span class="badge ${isErr ? 'badge-warning' : 'badge-success'}">${l.estado}</span></td>
+            </tr>`;
+          }).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--muted); padding:18px;">Aún no se han clasificado archivos en esta sesión. Usa el clasificador o despacha cualquier reporte arriba.</td></tr>';
         }
       } catch (err) {
         console.error('Error cargando bitácora del robot:', err);
@@ -3382,15 +3461,30 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
     if (rbForm) {
       rbForm.addEventListener('submit', async (ev) => {
         ev.preventDefault();
-        const fileIn = document.getElementById('rbFileInput');
-        const canal = document.getElementById('rbUploadAccion').value;
-        const chat_id = (document.getElementById('rb_chat_id') || {}).value || '';
-        const wa_phone = (document.getElementById('rb_wa_phone') || {}).value || '';
-        const toast = document.getElementById('rbUploadToast');
+        const fileIn = document.getElementById('rb_file_input') || document.getElementById('rbFileInput');
+        const rawCanal = ((document.getElementById('rb_auto_tg') || document.getElementById('rbUploadAccion') || {}).value || 'TELEGRAM').toUpperCase();
+        const canal = rawCanal === 'SI' ? 'TELEGRAM' : (rawCanal === 'NO' ? 'SOLO_CLASIFICAR' : rawCanal);
+        const chat_id = ((document.getElementById('rb_tg_chat') || document.getElementById('rb_chat_id') || {}).value || '1567561963').trim();
+        const wa_phone = ((document.getElementById('rb_wa_phone') || {}).value || '3155680575').trim();
+        const toast = document.getElementById('robotUploadToast') || document.getElementById('rbUploadToast');
 
-        if (!fileIn.files.length) return;
-        toast.className = 'status-toast ok';
-        toast.textContent = '⏳ Clasificando archivo y respaldando en Archivo_Procesado...';
+        if (!fileIn || !fileIn.files || !fileIn.files.length) {
+          if (toast) {
+            toast.className = 'status-toast err';
+            toast.textContent = '⚠️ Selecciona un archivo (.pdf, .xlsx, .jpg, .png) primero.';
+          }
+          return;
+        }
+
+        let waWin = null;
+        if (canal === 'WHATSAPP' || canal === 'AMBOS') {
+          waWin = window.open('about:blank', '_blank');
+        }
+
+        if (toast) {
+          toast.className = 'status-toast ok';
+          toast.textContent = '⏳ Clasificando archivo en Archivo_Procesado y ejecutando despacho...';
+        }
 
         const fd = new FormData();
         fd.append('file', fileIn.files[0]);
@@ -3401,15 +3495,30 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
         try {
           const res = await fetch('/api/bot/robot_upload', { method: 'POST', body: fd });
           const data = await res.json();
-          toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
-          toast.textContent = (data.ok ? '✅ ' : '❌ ') + (data.message || '');
+          if (toast) {
+            toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+            let htmlMsg = `<span>${data.ok ? '✅ ' : '❌ '}${data.message || ''}</span>`;
+            if (data.wa_url) {
+              htmlMsg += ` &nbsp;<a href="${data.wa_url}" target="_blank" class="btn btn-success" style="padding:3px 9px; font-size:11px; margin-left:6px;">📲 Abrir WhatsApp</a>`;
+            }
+            toast.innerHTML = htmlMsg;
+          }
           if (data.wa_url && (canal === 'WHATSAPP' || canal === 'AMBOS')) {
-            window.open(data.wa_url, '_blank');
+            if (waWin && !waWin.closed) {
+              waWin.location.href = data.wa_url;
+            } else {
+              window.open(data.wa_url, '_blank');
+            }
+          } else if (waWin && !waWin.closed) {
+            waWin.close();
           }
           cargarBitacoraRobot();
         } catch (err) {
-          toast.className = 'status-toast err';
-          toast.textContent = '❌ Error: ' + err;
+          if (waWin && !waWin.closed) waWin.close();
+          if (toast) {
+            toast.className = 'status-toast err';
+            toast.textContent = '❌ Error: ' + err;
+          }
         }
       });
     }
@@ -4515,9 +4624,10 @@ class AuditorWebHandler(BaseHTTPRequestHandler):
                     fname = f"Auditoria_Cartera_MultiPestana_CEA_{fecha_str}.xlsx"
                     download_path = "/api/download/excel"
                     caption_extra = "📗 Libro Excel Multi-Pestaña de Auditoría y Cartera CEA"
-                elif reporte_tipo == "FICHA_ALUMNO":
-                    res_al = clases_core.sheets_service.obtener_historial_alumno(alumno_q)
-                    alumno = res_al.get("alumno") or {"cedula": alumno_q, "nombre": alumno_q or "ALUMNO CEA", "categoria": cat_val, "telefono": ""}
+                elif reporte_tipo in ("FICHA_ALUMNO", "ALUMNO_F59"):
+                    q_usar = alumno_q or "SEGUNDO MURILLO"
+                    res_al = clases_core.sheets_service.obtener_historial_alumno(q_usar)
+                    alumno = res_al.get("alumno") or {"cedula": q_usar, "nombre": q_usar, "categoria": cat_val, "telefono": ""}
                     if cat_val and cat_val in clases_core.FORMATOS_OFICIALES:
                         alumno["categoria"] = cat_val
                     registros = [
@@ -4528,7 +4638,7 @@ class AuditorWebHandler(BaseHTTPRequestHandler):
                     file_bytes = pdf_buf.getvalue()
                     safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", str(alumno.get("nombre", "Alumno")))
                     fname = f"Ficha_Seguimiento_{alumno.get('categoria', 'A2')}_{safe_name}.pdf"
-                    download_path = f"/api/bot/pdf/alumno?q={urllib.parse.quote(alumno_q)}&cat={urllib.parse.quote(cat_val)}"
+                    download_path = f"/api/bot/pdf/alumno?q={urllib.parse.quote(q_usar)}&cat={urllib.parse.quote(cat_val)}"
                     caption_extra = f"🎓 Ficha Oficial de Clases Prácticas — {alumno.get('nombre')} ({alumno.get('categoria')})"
                 elif reporte_tipo == "NOMINA_PDF":
                     rep_nom = clases_core.sheets_service.obtener_clases_por_instructor_periodo("TODOS", "mes")
@@ -4560,6 +4670,7 @@ class AuditorWebHandler(BaseHTTPRequestHandler):
                     chat_id=chat_id,
                     wa_phone=wa_phone,
                 )
+                res_arch["download_url"] = download_path
                 if canal in ("WHATSAPP", "AMBOS") and not res_arch.get("wa_url"):
                     _, _, wa_link = _despachar_whatsapp_api_o_link(
                         file_bytes, fname, caption_extra, phone=wa_phone, download_path=download_path
