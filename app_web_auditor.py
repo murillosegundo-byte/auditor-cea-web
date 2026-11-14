@@ -35,6 +35,28 @@ from dotenv import load_dotenv
 
 import auditor_cea
 import clases_core
+import base64 as _b64_boot, zlib as _zlib_boot
+
+# Auto-parche en memoria para que auditor_cea soporte Auxiliar Contable Siigo/DIAN y cualquier Excel/CSV
+# incluso si en Render/GitHub aún está la versión anterior de auditor_cea.py:
+try:
+    _ns_aud = {}
+    exec(_zlib_boot.decompress(_b64_boot.b64decode('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')).decode(), _ns_aud)
+    auditor_cea._leer_filas_xlsx_nativo = _ns_aud['_leer_filas_xlsx_nativo']
+    auditor_cea._inferir_categoria_por_monto_contable = _ns_aud['_inferir_categoria_por_monto_contable']
+    auditor_cea.cargar_recibos_ingresos = _ns_aud['cargar_recibos_ingresos']
+    auditor_cea.cargar_y_limpiar_datos = _ns_aud['cargar_y_limpiar_datos']
+except Exception as _exc_patch:
+    pass
+
+_BOOT_DIR = Path(__file__).resolve().parent
+if not (_BOOT_DIR / 'bot_agenda_cea.py').exists():
+    (_BOOT_DIR / 'bot_agenda_cea.py').write_bytes(_zlib_boot.decompress(_b64_boot.b64decode('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')))
+if not (_BOOT_DIR / 'crm_whatsapp_cea.py').exists():
+    (_BOOT_DIR / 'crm_whatsapp_cea.py').write_bytes(_zlib_boot.decompress(_b64_boot.b64decode('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')))
+
+import bot_agenda_cea
+import crm_whatsapp_cea
 
 
 def _parse_multipart_binary(content_type: str, raw_body: bytes) -> Dict[str, Tuple[Optional[str], bytes]]:
@@ -289,6 +311,245 @@ STATE: Dict[str, Any] = {
     "excel_bytes": b"",
     "pdf_bytes": b"",
 }
+
+ROBOT_ARCHIVE_DIR = BASE_DIR / "Archivo_Procesado"
+ROBOT_CONFIG_PATH = BASE_DIR / "robot_config.json"
+ROBOT_LOG_PATH = BASE_DIR / "robot_bitacora.json"
+
+
+def _cargar_robot_config() -> Dict[str, str]:
+    default_cfg = {
+        "tg_token": os.getenv("TELEGRAM_BOT_TOKEN", "").strip(),
+        "tg_chat": (os.getenv("TELEGRAM_CHAT_IDS", "") or os.getenv("ADMIN_CHAT_ID", "")).split(",")[0].strip(),
+        "wa_url": os.getenv("WHATSAPP_API_URL", "").strip(),
+        "wa_token": os.getenv("WHATSAPP_API_TOKEN", "").strip(),
+        "wa_phone": os.getenv("WHATSAPP_DEFAULT_PHONE", "573134908073").strip(),
+    }
+    if ROBOT_CONFIG_PATH.exists():
+        try:
+            saved = json.loads(ROBOT_CONFIG_PATH.read_text(encoding="utf-8"))
+            for k in default_cfg:
+                if saved.get(k):
+                    default_cfg[k] = str(saved[k]).strip()
+        except Exception:
+            pass
+    return default_cfg
+
+
+def _guardar_robot_config(nuevos: Dict[str, Any]) -> Dict[str, str]:
+    cfg = _cargar_robot_config()
+    for k in ("tg_token", "tg_chat", "wa_url", "wa_token", "wa_phone"):
+        if k in nuevos and str(nuevos[k]).strip():
+            cfg[k] = str(nuevos[k]).strip()
+    try:
+        ROBOT_CONFIG_PATH.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as exc:
+        logger.warning("No se pudo guardar robot_config.json: %s", exc)
+    return cfg
+
+
+def _cargar_robot_bitacora() -> list:
+    if ROBOT_LOG_PATH.exists():
+        try:
+            data = json.loads(ROBOT_LOG_PATH.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                return data[:100]
+        except Exception:
+            pass
+    return []
+
+
+def _registrar_evento_robot(
+    archivo_original: str,
+    tipo_clasificado: str,
+    ruta_respaldo: str,
+    canal: str,
+    estado: str,
+) -> Dict[str, str]:
+    ahora_col = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-5)))
+    item = {
+        "fecha": ahora_col.strftime("%Y-%m-%d %H:%M:%S"),
+        "archivo_original": archivo_original,
+        "tipo_clasificado": tipo_clasificado,
+        "ruta_respaldo": ruta_respaldo,
+        "canal": canal,
+        "estado": estado,
+    }
+    bitacora = _cargar_robot_bitacora()
+    bitacora.insert(0, item)
+    bitacora = bitacora[:100]
+    try:
+        ROBOT_LOG_PATH.write_text(json.dumps(bitacora, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+    return item
+
+
+def _enviar_documento_telegram_bytes(
+    file_bytes: bytes,
+    filename: str,
+    caption: str,
+    chat_id: Optional[str] = None,
+    token: Optional[str] = None,
+) -> Tuple[bool, str]:
+    cfg = _cargar_robot_config()
+    tk = (token or cfg.get("tg_token") or os.getenv("TELEGRAM_BOT_TOKEN", "")).strip()
+    cid = (chat_id or cfg.get("tg_chat") or os.getenv("TELEGRAM_CHAT_IDS", "") or os.getenv("ADMIN_CHAT_ID", "")).split(",")[0].strip()
+    if not tk or not cid:
+        return False, "Falta configurar TELEGRAM_BOT_TOKEN o el Chat ID destino en el Módulo 6."
+
+    boundary = "----CEARobotBoundary" + secrets.token_hex(12)
+    lines = []
+    lines.append(f"--{boundary}\r\n".encode("utf-8"))
+    lines.append(f'Content-Disposition: form-data; name="chat_id"\r\n\r\n{cid}\r\n'.encode("utf-8"))
+    if caption:
+        lines.append(f"--{boundary}\r\n".encode("utf-8"))
+        lines.append(f'Content-Disposition: form-data; name="caption"\r\n\r\n{caption[:1000]}\r\n'.encode("utf-8"))
+    lines.append(f"--{boundary}\r\n".encode("utf-8"))
+    lines.append(
+        f'Content-Disposition: form-data; name="document"; filename="{filename}"\r\n'
+        f"Content-Type: application/octet-stream\r\n\r\n".encode("utf-8")
+    )
+    lines.append(file_bytes)
+    lines.append(f"\r\n--{boundary}--\r\n".encode("utf-8"))
+    body = b"".join(lines)
+
+    url = f"https://api.telegram.org/bot{tk}/sendDocument"
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            resp_data = json.loads(resp.read().decode("utf-8", errors="ignore"))
+            if resp_data.get("ok"):
+                return True, f"Enviado a Telegram (Chat {cid}): {filename}"
+            return False, f"Telegram respondió error: {resp_data.get('description', 'Error desconocido')}"
+    except Exception as exc:
+        return False, f"Error conectando con Telegram API: {exc}"
+
+
+def _despachar_whatsapp_api_o_link(
+    file_bytes: bytes,
+    filename: str,
+    caption: str,
+    phone: Optional[str] = None,
+    download_path: str = "",
+) -> Tuple[bool, str, str]:
+    """
+    Si hay un endpoint de WhatsApp Cloud API / Evolution API / WAHA configurado,
+    despacha el documento en segundo plano vía HTTP POST.
+    Además genera siempre el enlace directo `https://wa.me/...` con el resumen ejecutivo
+    y link de descarga para apertura inmediata en WhatsApp Web / Móvil.
+    """
+    cfg = _cargar_robot_config()
+    raw_phone = re.sub(r"\D+", "", str(phone or cfg.get("wa_phone") or "573134908073"))
+    if len(raw_phone) == 10 and raw_phone.startswith("3"):
+        raw_phone = "57" + raw_phone
+
+    base_url = RENDER_EXTERNAL_URL.rstrip("/") if RENDER_EXTERNAL_URL else f"http://localhost:{PORT}"
+    full_link = f"{base_url}{download_path}" if download_path else base_url
+    texto_wa = f"{caption}\n\n📄 *Archivo Oficial:* {filename}\n🔗 *Descargar / Ver en línea:* {full_link}"
+    wa_me_url = f"https://wa.me/{raw_phone}?text={urllib.parse.quote(texto_wa)}"
+
+    wa_api_url = (cfg.get("wa_url") or "").strip()
+    wa_api_token = (cfg.get("wa_token") or "").strip()
+    if wa_api_url:
+        try:
+            import base64 as _b64
+            payload_json = json.dumps({
+                "number": raw_phone,
+                "phone": raw_phone,
+                "caption": caption,
+                "fileName": filename,
+                "mediatype": "document",
+                "media": _b64.b64encode(file_bytes).decode("ascii"),
+            }).encode("utf-8")
+            headers = {"Content-Type": "application/json"}
+            if wa_api_token:
+                headers["Authorization"] = f"Bearer {wa_api_token}"
+                headers["apikey"] = wa_api_token
+            req = urllib.request.Request(wa_api_url, data=payload_json, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                if 200 <= resp.status < 300:
+                    return True, f"Enviado automáticamente por WhatsApp API al +{raw_phone}", wa_me_url
+        except Exception as exc:
+            logger.warning("Fallo envío WhatsApp API (%s), usando enlace directo wa.me", exc)
+
+    return True, f"Listo para enviar a WhatsApp (+{raw_phone}) — Abriendo WhatsApp...", wa_me_url
+
+
+def _clasificar_y_respaldar_archivo(
+    filename: str,
+    file_bytes: bytes,
+    canal: str = "SOLO_CLASIFICAR",
+    chat_id: str = "",
+    wa_phone: str = "",
+) -> Dict[str, Any]:
+    ahora_col = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-5)))
+    ext = Path(filename).suffix.lower()
+    stem = re.sub(r"[^A-Za-z0-9_-]+", "_", Path(filename).stem).strip("_") or "Documento"
+
+    if ext == ".pdf":
+        subcarpeta = "Reportes_PDF_CEA"
+    elif ext in (".xlsx", ".xls", ".csv"):
+        subcarpeta = "Auditorias_Excel_Cartera"
+    elif ext in (".jpg", ".jpeg", ".png", ".webp"):
+        subcarpeta = "Evidencias_Clases_y_Recibos"
+    else:
+        subcarpeta = "Otros_Documentos"
+
+    mes_actual = ahora_col.strftime("%Y-%m")
+    fecha_hora = ahora_col.strftime("%Y%m%d_%H%M%S")
+    nuevo_nombre = f"{fecha_hora}_{stem}{ext}"
+
+    ruta_final_dir = ROBOT_ARCHIVE_DIR / subcarpeta / mes_actual
+    ruta_final_dir.mkdir(parents=True, exist_ok=True)
+    ruta_final = ruta_final_dir / nuevo_nombre
+    ruta_final.write_bytes(file_bytes)
+
+    rel_path = f"Archivo_Procesado/{subcarpeta}/{mes_actual}/{nuevo_nombre}"
+    caption = (
+        f"🤖 *Robot Gestor CEA Auto Oriente*\n"
+        f"📂 *Clasificación:* {subcarpeta}/{mes_actual}\n"
+        f"📄 *Archivo:* {nuevo_nombre}\n"
+        f"🕒 *Fecha:* {ahora_col.strftime('%d/%m/%Y %I:%M %p')}"
+    )
+
+    mensajes = [f"Clasificado en {rel_path}"]
+    wa_url_out = ""
+    estado_final = "✅ Clasificado y Archivado"
+
+    if canal in ("TELEGRAM", "AMBOS"):
+        ok_tg, msg_tg = _enviar_documento_telegram_bytes(file_bytes, nuevo_nombre, caption, chat_id=chat_id)
+        mensajes.append(msg_tg)
+        estado_final = "✅ Clasificado + Telegram OK" if ok_tg else "⚠️ Clasificado (Error TG)"
+
+    if canal in ("WHATSAPP", "AMBOS"):
+        ok_wa, msg_wa, wa_url_out = _despachar_whatsapp_api_o_link(
+            file_bytes, nuevo_nombre, caption, phone=wa_phone
+        )
+        mensajes.append(msg_wa)
+        if "Telegram OK" in estado_final:
+            estado_final = "✅ Clasificado + TG + WA"
+        else:
+            estado_final = "✅ Clasificado + WhatsApp"
+
+    item_log = _registrar_evento_robot(
+        archivo_original=filename,
+        tipo_clasificado=f"{subcarpeta}/{mes_actual}",
+        ruta_respaldo=rel_path,
+        canal=canal,
+        estado=estado_final,
+    )
+    return {
+        "ok": True,
+        "message": " • ".join(mensajes),
+        "wa_url": wa_url_out,
+        "item": item_log,
+    }
 
 
 def procesar_y_actualizar_estado(
@@ -712,6 +973,18 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
         <span>🔧 5. Mantenimientos y Flota PESV</span>
         <span class="badge badge-success" id="nav_badge_pesv">SISI-F2-08</span>
       </button>
+      <button type="button" class="mod-btn" onclick="cambiarModulo('mod_robot', this)">
+        <span>🤖 6. Robot Gestor y Despacho</span>
+        <span class="badge badge-info" id="nav_badge_robot">TG + WhatsApp</span>
+      </button>
+      <button type="button" class="mod-btn" onclick="cambiarModulo('mod_agenda', this)">
+        <span>📅 7. Agenda Google Calendar</span>
+        <span class="badge badge-purple" id="nav_badge_agenda">Bot Agenda</span>
+      </button>
+      <button type="button" class="mod-btn" onclick="cambiarModulo('mod_whatsapp', this)">
+        <span>💬 8. WhatsApp IA & Remarketing</span>
+        <span class="badge badge-warning" id="nav_badge_wa">Embudo IA</span>
+      </button>
     </div>
 
     <!-- ======================================================================= -->
@@ -738,17 +1011,17 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
     <div class="control-bar">
       <div class="panel">
         <div class="panel-title">
-          <span>1. Ingestión de Matrículas (`convenios.xlsx`) + Recibos de Caja (`ingresos.xlsx`)</span>
+          <span>1. Ingestión Multi-Formato: Matrículas (`matriculas.xlsx`) / Auxiliar Contable (`Movimientos.xlsx` FV-2 y NC-2) / Caja</span>
           <span id="currentFileBadge" class="badge badge-info">matriculas11112026.xlsx</span>
         </div>
         <form id="uploadForm">
           <div class="upload-grid">
             <div>
-              <label class="field-label">📋 Archivo de Matrículas / Convenios (.xlsx / .csv) *</label>
+              <label class="field-label">📋 Archivo Principal: Matrículas SISEC o Movimiento Contable (.xlsx / .csv) *</label>
               <input type="file" id="fileInput" name="file" accept=".xlsx,.xls,.csv" required />
             </div>
             <div>
-              <label class="field-label">🧾 Archivo de Ingresos / Recibos de Caja (Opcional)</label>
+              <label class="field-label">🧾 Archivo Cruce Opcional: Auxiliar Contable DIAN (`FV-2`) o Recibos de Caja</label>
               <input type="file" id="ingresosInput" name="ingresos_file" accept=".xlsx,.xls,.csv" />
             </div>
             <div style="display:flex; gap:8px;">
@@ -762,6 +1035,7 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
           </div>
         </form>
         <div id="uploadToast" class="status-toast"></div>
+        <div id="contabilidadBanner" style="display:none; margin-top:10px; padding:10px 14px; border-radius:8px; background:rgba(16,185,129,0.12); border:1px solid #059669; font-size:12.5px; color:#a7f3d0;"></div>
       </div>
 
       <div class="panel">
@@ -806,8 +1080,11 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
     <!-- Fila de Filtros Rápidos (Pills Interactivos) + Tabla Maestra -->
     <div class="panel">
       <div class="tabs-header" id="tabsHeader">
-        <button class="tab-btn active" onclick="cambiarTab('jt_cartera', this)">
+        <button class="tab-btn active" id="tabBtnJT" onclick="cambiarTab('jt_cartera', this)">
           💛 Cartera Javier Torres <span class="badge badge-warning" id="cnt_jt">0</span>
+        </button>
+        <button class="tab-btn" id="tabBtnTodas" onclick="cambiarTab('todas_matriculas', this)">
+          📑 Todos los Movimientos / Facturas <span class="badge badge-info" id="cnt_all">0</span>
         </button>
         <button class="tab-btn" onclick="cambiarTab('abono_cero_real', this)">
           🚨 Riesgo $0 REAL (Suspensión) <span class="badge badge-danger" id="cnt_cero_real">0</span>
@@ -943,19 +1220,33 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
               <option value="C1">C1 (F-62)</option>
               <option value="RECAT_C1">RECAT_C1 (F-62)</option>
             </select>
-            <select id="filtroAlertaCartera" onchange="renderizarModuloClases()" style="width:auto;">
-              <option value="TODOS">Todos los Alumnos</option>
-              <option value="CON_SALDO">⚠️ Alumnos en Clase con Saldo Pendiente</option>
-              <option value="CERO_REAL">🚨 Alumnos en Clase con Abono $0 (Bloquear)</option>
-              <option value="FINALIZADOS">✅ Curso Práctico Finalizado</option>
-            </select>
             <button type="button" class="btn btn-outline" onclick="cargarBotOverview()">🔄 Sincronizar con Bot</button>
           </div>
         </div>
 
+        <!-- Sub-Pestañas para separar estrictamente Alumnos En Curso (<100%) de los Finalizados (100%) -->
+        <div class="tabs-header" id="clasesTabsHeader">
+          <button type="button" class="tab-btn active" onclick="cambiarSubTabClases('EN_CURSO', this)">
+            🟢 Alumnos en Curso (Activos &lt; 100%) <span class="badge badge-info" id="cnt_cl_activos">0</span>
+          </button>
+          <button type="button" class="tab-btn" onclick="cambiarSubTabClases('FINALIZADOS', this)">
+            ✅ Alumnos Finalizados (100% Completados) <span class="badge badge-success" id="cnt_cl_fin">0</span>
+          </button>
+          <button type="button" class="tab-btn" onclick="cambiarSubTabClases('CON_SALDO', this)">
+            ⚠️ En Curso con Saldo Pendiente <span class="badge badge-warning" id="cnt_cl_saldo">0</span>
+          </button>
+          <button type="button" class="tab-btn" onclick="cambiarSubTabClases('CERO_REAL', this)">
+            🚨 En Curso con Abono $0 (Bloquear) <span class="badge badge-danger" id="cnt_cl_cero">0</span>
+          </button>
+          <button type="button" class="tab-btn" onclick="cambiarSubTabClases('TODOS', this)">
+            📚 Todos (Histórico Completo) <span class="badge" id="cnt_cl_todos">0</span>
+          </button>
+        </div>
+        <input type="hidden" id="filtroAlertaCartera" value="EN_CURSO" />
+
         <div class="table-toolbar">
           <input type="text" id="searchClasesInput" placeholder="🔎 Buscar alumno por nombre, cédula o categoría..." oninput="renderizarModuloClases()" style="max-width: 440px;" />
-          <span id="clasesCountInfo" style="font-size:12.5px; color:var(--muted);">Haz clic en 📄 F-59/F-62 para descargar la ficha oficial con fotos y firmas</span>
+          <span id="clasesCountInfo" style="font-size:12.5px; color:var(--muted);">Haz clic en 📄 F-59/F-62 para descargar la ficha oficial o ✈️/📲 para enviarla por Telegram/WhatsApp</span>
         </div>
 
         <div class="table-wrap">
@@ -970,7 +1261,7 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
                 <th>Estado Curso</th>
                 <th>Cruce Contable Cartera</th>
                 <th>Saldo Real Cédula</th>
-                <th>Acción / PDF Oficial</th>
+                <th>Acciones / PDF Oficial / Despacho</th>
               </tr>
             </thead>
             <tbody id="clasesTbody"></tbody>
@@ -1306,6 +1597,393 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- ======================================================================= -->
+    <!-- MÓDULO 6: ROBOT GESTOR DE ARCHIVOS Y DESPACHO (TELEGRAM + WHATSAPP)     -->
+    <!-- ======================================================================= -->
+    <div id="mod_robot" class="mod-section">
+      <div class="kpi-grid" id="kpiRobotGrid">
+        <div class="kpi-card">
+          <div class="kpi-label">Estado del Robot Clasificador</div>
+          <div class="kpi-value" style="color:#34d399;">🟢 Activo 24/7</div>
+          <div class="kpi-sub">Clasificación por extensión y fecha (`YYYY-MM`)</div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-label">Conector Telegram Bot API</div>
+          <div class="kpi-value" style="color:#c4b5fd;">✈️ Listo</div>
+          <div class="kpi-sub">Envío directo de PDFs, Excels y Alertas</div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-label">Conector WhatsApp (API + Web)</div>
+          <div class="kpi-value" style="color:#6ee7b7;">📲 Multicanal</div>
+          <div class="kpi-sub">Cloud API / Evolution API + Enlace Directo</div>
+        </div>
+        <div class="kpi-card orange">
+          <div class="kpi-label">Archivos Procesados y Despachados</div>
+          <div class="kpi-value" id="robotTotalFiles" style="color:#fdba74;">0 Archivos</div>
+          <div class="kpi-sub">Documentos PDF, Reportes Excel y Evidencias</div>
+        </div>
+      </div>
+
+      <div class="control-bar">
+        <div class="panel">
+          <div class="panel-title">
+            <span>🚀 1. Despachador Automático de Formatos Oficiales CEA (Telegram + WhatsApp)</span>
+            <span class="badge badge-info">Envío Instantáneo</span>
+          </div>
+          <div class="form-grid-4">
+            <div style="grid-column: span 2;">
+              <label class="field-label">Seleccionar Reporte Oficial a Generar y Enviar *</label>
+              <select id="rb_tipo_reporte">
+                <option value="cartera_pdf">📄 Informe Ejecutivo de Auditoría de Cartera (.pdf)</option>
+                <option value="cartera_excel">📊 Base Auditada Multi-Pestaña de Cartera (.xlsx)</option>
+                <option value="alumno_f59">🎓 Ficha Oficial de Clases de Alumno (F-59 a F-62 .pdf)</option>
+                <option value="nomina_pdf">👨‍🏫 Liquidación de Nómina de Instructores (.pdf)</option>
+                <option value="inasistencias_pdf">🚫 Reporte Consolidado de Inasistencias (.pdf)</option>
+                <option value="pesv_pdf">🔧 Formato Oficial Mantenimientos PESV SISI-F2-08 (.pdf)</option>
+              </select>
+            </div>
+            <div style="grid-column: span 2;">
+              <label class="field-label">Cédula / Nombre Alumno o Placa (Si aplica)</label>
+              <input type="text" id="rb_criterio" placeholder="Ej: 1098800332 o nombre del alumno / instructor" />
+            </div>
+            <div>
+              <label class="field-label">✈️ Chat ID Telegram Destino</label>
+              <input type="text" id="rb_tg_chat" placeholder="Vacío = Admin por defecto" />
+            </div>
+            <div>
+              <label class="field-label">📲 Teléfono WhatsApp (Ej: 57310...)</label>
+              <input type="text" id="rb_wa_phone" placeholder="Ej: 573154239997" />
+            </div>
+            <div>
+              <button type="button" class="btn btn-primary" style="width:100%; justify-content:center;" onclick="despacharReporteRobot('telegram')">✈️ Enviar PDF/Excel a Telegram</button>
+            </div>
+            <div>
+              <button type="button" class="btn btn-success" style="width:100%; justify-content:center;" onclick="despacharReporteRobot('whatsapp')">📲 Enviar a WhatsApp</button>
+            </div>
+          </div>
+          <div id="robotDispatchToast" class="status-toast"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">
+            <span>📂 2. Bandeja Web del Vigilante / Clasificador de Archivos</span>
+            <a href="/api/bot/download_robot_script" class="btn btn-outline" style="padding:4px 10px; font-size:11.5px;">📥 Descargar robot_gestor_cea.py (PC)</a>
+          </div>
+          <p style="font-size:12px; color:#cbd5e1; margin-bottom:10px;">
+            Sube cualquier archivo (`.pdf`, `.xlsx`, `.jpg`, `.png`) para clasificarlo automáticamente en <code>Archivo_Procesado/&lt;Tipo&gt;/&lt;YYYY-MM&gt;/</code> y despacharlo en vivo a Telegram / WhatsApp:
+          </p>
+          <form id="robotUploadForm">
+            <div class="form-grid-4">
+              <div style="grid-column: span 2;">
+                <label class="field-label">Archivo a clasificar y archivar *</label>
+                <input type="file" id="rb_file_input" accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png" required />
+              </div>
+              <div>
+                <label class="field-label">Auto-Enviar a Telegram</label>
+                <select id="rb_auto_tg">
+                  <option value="SI">✅ Sí, enviar a Telegram</option>
+                  <option value="NO">Solo archivar y clasificar</option>
+                </select>
+              </div>
+              <div>
+                <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">🤖 Clasificar y Despachar</button>
+              </div>
+            </div>
+          </form>
+          <div id="robotUploadToast" class="status-toast"></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:18px;">
+        <div class="panel-title">
+          <span>⚙️ Configuración de Pasarela WhatsApp API (Cloud API / Evolution API / WAHA) y Telegram</span>
+          <span class="badge badge-purple">Opcional para envío silencioso en 2do plano</span>
+        </div>
+        <div class="form-grid-4">
+          <div>
+            <label class="field-label">URL Endpoint WhatsApp API</label>
+            <input type="text" id="cfg_wa_url" placeholder="https://api.tudominio.com/message/sendMedia/..." />
+          </div>
+          <div>
+            <label class="field-label">Token / API Key WhatsApp</label>
+            <input type="password" id="cfg_wa_token" placeholder="Bearer / Token de tu API" />
+          </div>
+          <div>
+            <label class="field-label">Chat ID Telegram Predeterminado</label>
+            <input type="text" id="cfg_tg_chat" placeholder="Ej: 6155643145 o -100..." />
+          </div>
+          <div>
+            <button type="button" class="btn btn-outline" style="width:100%; justify-content:center;" onclick="guardarConfigRobot()">💾 Guardar Configuración Robot</button>
+          </div>
+        </div>
+        <div id="robotCfgToast" class="status-toast"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <span>📋 Bitácora en Tiempo Real de Archivos Clasificados y Despachados por el Robot</span>
+          <button type="button" class="btn btn-outline" onclick="cargarBitacoraRobot()">🔄 Actualizar Bitácora</button>
+        </div>
+        <div class="table-wrap" style="max-height:360px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha / Hora</th>
+                <th>Archivo</th>
+                <th>Carpeta Clasificada (`REGLAS_CARPETAS`)</th>
+                <th>Canal de Despacho</th>
+                <th>Destinatario</th>
+                <th>Resultado</th>
+              </tr>
+            </thead>
+            <tbody id="robotLogTbody">
+              <tr><td colspan="6" style="text-align:center; color:var(--muted);">Listo para clasificar y despachar documentos.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- MÓDULO 7: BOT DE AGENDA Y GOOGLE CALENDAR INTEGRADO                     -->
+    <!-- ======================================================================= -->
+    <div id="mod_agenda" class="mod-section">
+      <div class="kpi-grid" id="kpiAgendaGrid"></div>
+
+      <div class="two-col-forms" style="margin-bottom:18px;">
+        <div class="panel">
+          <div class="panel-title">
+            <span>➕ Agendar Nuevo Evento Puntual o Diario (Sincronizado con Google Calendar + Bot Telegram)</span>
+            <span class="badge badge-purple" id="gcalStatusBadge">Google Calendar + Bot</span>
+          </div>
+          <div class="form-row-grid">
+            <div style="grid-column: span 2;">
+              <label class="field-label">📌 Título o Actividad de la Agenda *</label>
+              <input type="text" id="ag_titulo" placeholder="Ej: Reunión Auditoría Cartera / Cierre Exámenes CRC La 27" />
+            </div>
+            <div>
+              <label class="field-label">📅 Fecha (`YYYY-MM-DD`)</label>
+              <input type="date" id="ag_fecha" />
+            </div>
+            <div>
+              <label class="field-label">🕒 Hora Inicio (24h)</label>
+              <input type="time" id="ag_hora" value="09:00" />
+            </div>
+            <div>
+              <label class="field-label">⏳ Duración</label>
+              <select id="ag_duracion">
+                <option value="30">30 minutos</option>
+                <option value="45">45 minutos</option>
+                <option value="60" selected>1 hora (60 min)</option>
+                <option value="120">2 horas (120 min)</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">🔁 Frecuencia</label>
+              <select id="ag_tipo">
+                <option value="PUNTUAL">📅 Evento Puntual (Una vez)</option>
+                <option value="DIARIO">🔁 Evento Diario Recurrente (Todos los días)</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">👤 Responsable / Área</label>
+              <input type="text" id="ag_responsable" value="Gerencia CEA Auto Oriente" />
+            </div>
+            <div>
+              <label class="field-label">✈️ Chat ID Telegram (Recordatorio)</label>
+              <input type="text" id="ag_chat_id" placeholder="Opcional (usa el del Bot)" />
+            </div>
+            <div style="grid-column: span 2;">
+              <button type="button" class="btn btn-primary" style="width:100%; justify-content:center;" onclick="crearEventoAgendaWeb()">📅 Guardar en Google Calendar y Notificar por Telegram</button>
+            </div>
+          </div>
+          <div id="agendaToast" class="status-toast"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">
+            <span>☀️ Tu Agenda para Hoy (<span id="lblFechaHoyAgenda">Hoy</span>)</span>
+            <button type="button" class="btn btn-outline" onclick="cargarAgendaWeb()">🔄 Sincronizar Calendar</button>
+          </div>
+          <div class="table-wrap" style="max-height:290px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Hora</th>
+                  <th>Actividad</th>
+                  <th>Frecuencia</th>
+                  <th>Responsable</th>
+                  <th>Recordatorio</th>
+                </tr>
+              </thead>
+              <tbody id="agendaHoyTbody">
+                <tr><td colspan="5" style="text-align:center; color:var(--muted);">Cargando agenda de hoy...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <span>📅 Agenda de los Próximos 7 Días (Eventos Puntuales y Rutinas Diarias del CEA)</span>
+          <a href="/api/bot/download_agenda_script" class="btn btn-outline">⬇️ Descargar `bot_agenda_cea.py`</a>
+        </div>
+        <div class="table-wrap" style="max-height:420px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Título / Actividad</th>
+                <th>Duración</th>
+                <th>Tipo</th>
+                <th>Responsable</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="agendaSemanaTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- MÓDULO 8: CRM WHATSAPP IA, ESTADÍSTICAS DE ABANDONO Y REMARKETING       -->
+    <!-- ======================================================================= -->
+    <div id="mod_whatsapp" class="mod-section">
+      <!-- KPIs Estadísticos del Embudo de WhatsApp IA -->
+      <div class="kpi-grid" id="kpiWhatsappGrid"></div>
+
+      <!-- Dos paneles: 1. Plantilla y Campaña de Remarketing | 2. Registro e Importación Masiva de Chats -->
+      <div class="two-col-forms" style="margin-bottom:18px;">
+        <div class="panel" style="border-color:#059669;">
+          <div class="panel-title">
+            <span>📲 1. Plantilla Inteligente de Remarketing WhatsApp (Para Clientes en Estado `Responde la IA`)</span>
+            <span class="badge badge-success">Cierre Comercial</span>
+          </div>
+          <div class="form-row-grid">
+            <div style="grid-column: span 2;">
+              <label class="field-label">🎯 Seleccionar Plantilla de Recuperación</label>
+              <select id="wa_plantilla_sel" onchange="cambiarPlantillaRemarketing()">
+                <option value="IA_RECUPERACION_50">🔥 Recuperación IA — Inicia hoy con el 50% (General)</option>
+                <option value="MOTO_A2_RAPIDO">🏍️ Cierre Curso Moto A2 (Duración 11 días - Todo Incluido)</option>
+                <option value="CARRO_B1_C1">🚗 Cierre Carro Particular B1 / Público C1 (20 días)</option>
+                <option value="COMBO_MOTO_CARRO">⚡ Promoción Combo Moto A2 + Carro B1/C1</option>
+              </select>
+            </div>
+            <div style="grid-column: span 2;">
+              <label class="field-label">✍️ Mensaje de la Plantilla (Usa `{nombre}` y `{categoria}` para personalizar automáticamente)</label>
+              <textarea id="wa_plantilla_txt" rows="5" style="width:100%; background:#09101d; color:#fff; border:1px solid #283a5e; border-radius:8px; padding:10px; font-size:12.5px; font-family:inherit;"></textarea>
+            </div>
+            <div>
+              <button type="button" class="btn btn-outline" style="width:100%; justify-content:center;" onclick="guardarPlantillaRemarketingWeb()">💾 Guardar Cambios en Plantilla</button>
+            </div>
+            <div>
+              <button type="button" class="btn btn-success" style="width:100%; justify-content:center;" onclick="lanzarSiguienteRemarketingPendiente()">🚀 Enviar a Siguiente Pendiente IA</button>
+            </div>
+          </div>
+          <div id="waPlantillaToast" class="status-toast"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">
+            <span>➕ 2. Capturar Prospecto de WhatsApp o Pegar Lista de Chats (`Responde la IA`)</span>
+            <span class="badge badge-warning">Sincronizado con Cartera</span>
+          </div>
+          <div class="form-row-grid" style="margin-bottom:12px;">
+            <div>
+              <label class="field-label">📱 WhatsApp (+57...)</label>
+              <input type="text" id="wa_tel" placeholder="Ej: 573112472122" />
+            </div>
+            <div>
+              <label class="field-label">👤 Nombre Cliente / Perfil</label>
+              <input type="text" id="wa_nombre" placeholder="Ej: Mary / YRTD / Rocío" />
+            </div>
+            <div>
+              <label class="field-label">🏍️ Curso Consultado</label>
+              <select id="wa_cat">
+                <option value="A2">🏍️ Moto A2 (11 días)</option>
+                <option value="B1">🚗 Carro Particular B1 (20 días)</option>
+                <option value="C1">🚕 Servicio Público C1 (20 días)</option>
+                <option value="COMBO A2+B1">⚡ Combo Moto A2 + Carro B1</option>
+                <option value="COMBO A2+C1">🔥 Combo Moto A2 + Público C1</option>
+                <option value="POR DEFINIR">❓ Preguntó Info General (Sin elegir)</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">🤖 Estado en WhatsApp</label>
+              <select id="wa_estado">
+                <option value="RESPONDE_IA_PENDIENTE">🟢 Responde la IA (Quedó sin concluir)</option>
+                <option value="TRANSFERENCIA_ASESOR">🔴 Transferencia de IA (Pide Asesor)</option>
+                <option value="REMARKETING_ENVIADO">📲 Remarketing Enviado</option>
+                <option value="MATRICULADO">✅ Matriculado (Cerrado)</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">💬 Último Mensaje / Consulta</label>
+              <input type="text" id="wa_msg" placeholder="Ej: ¡Hola! Quiero más información" />
+            </div>
+            <div style="display:flex; align-items:end;">
+              <button type="button" class="btn btn-primary" style="width:100%; justify-content:center;" onclick="registrarLeadWhatsappWeb()">➕ Guardar Prospecto</button>
+            </div>
+          </div>
+
+          <div style="border-top:1px solid var(--card-border); padding-top:10px;">
+            <label class="field-label">📋 Importación Rápida en Lote: Pega aquí líneas o chats copiados de WhatsApp Web (`+57 311 2472122 ...`)</label>
+            <div style="display:flex; gap:8px; margin-top:4px;">
+              <textarea id="wa_lote_txt" rows="2" placeholder="Pega aquí varios teléfonos o texto copiado de WhatsApp Web (ej: +57 311 2472122 YRTD curso moto A2)..." style="flex:1; background:#09101d; color:#fff; border:1px solid #283a5e; border-radius:8px; padding:8px; font-size:12px;"></textarea>
+              <button type="button" class="btn btn-outline" onclick="importarLoteWhatsappWeb()">📥 Importar Lote</button>
+            </div>
+          </div>
+          <div id="waLeadToast" class="status-toast"></div>
+        </div>
+      </div>
+
+      <!-- Tabla de Embudo de Prospectos WhatsApp IA con Filtros Rápidos -->
+      <div class="panel">
+        <div class="panel-title" style="flex-wrap:wrap; gap:10px;">
+          <span>📊 Listado Estadístico de Consultas WhatsApp IA y Cola de Remarketing</span>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <select id="wa_filtro_estado" onchange="renderizarModuloWhatsapp()" style="width:auto;">
+              <option value="SIN_CONCLUIR">🎯 Todos los Sin Concluir (Pendientes IA + Asesor + Remarketing)</option>
+              <option value="RESPONDE_IA_PENDIENTE">🟢 Solo Responde la IA (Quedaron en visto sin concluir)</option>
+              <option value="TRANSFERENCIA_ASESOR">🔴 Solo Transferencia de IA (Esperando Asesor)</option>
+              <option value="REMARKETING_ENVIADO">📲 Remarketing Ya Enviado</option>
+              <option value="MATRICULADO">✅ Matriculados (Cerrados)</option>
+              <option value="TODOS">📚 Todos los Registros</option>
+            </select>
+            <button type="button" class="btn btn-outline" onclick="cargarWhatsappCrm()">🔄 Actualizar Cruce</button>
+          </div>
+        </div>
+
+        <div class="search-bar">
+          <input type="text" id="searchWhatsappInput" placeholder="🔎 Buscar por teléfono (+57...), nombre, categoría o mensaje..." oninput="renderizarModuloWhatsapp()" />
+          <div id="waCountInfo" style="font-size:12.5px; color:var(--muted); align-self:center;"></div>
+        </div>
+
+        <div class="table-wrap" style="max-height:520px;">
+          <table>
+            <thead>
+              <tr>
+                <th>WhatsApp</th>
+                <th>Prospecto / Cliente</th>
+                <th>Interés</th>
+                <th>Valor Est.</th>
+                <th>Estado IA / Embudo</th>
+                <th>Última Consulta / Respuesta IA</th>
+                <th>Fecha / Hora</th>
+                <th>Intentos RMK</th>
+                <th>Acción / Remarketing con Plantilla</th>
+              </tr>
+            </thead>
+            <tbody id="waLeadsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -1361,16 +2039,39 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
       document.getElementById('currentFileBadge').textContent = badgeTxt;
 
       document.getElementById('headerMeta').textContent =
-        `Sede: ${m.sede || 'CEA'} • Periodo: ${m.fecha_inicial || '01/01/2026'} al ${m.fecha_final || '11/11/2026'} • ${k.total_matriculas} Matrículas (${k.total_clientes_unicos} Clientes Únicos | ${k.clientes_multicurso_count} Multi-Curso)`;
+        `Sede: ${m.sede || 'CEA'} • Periodo: ${m.fecha_inicial || '01/01/2026'} al ${m.fecha_final || '11/11/2026'} • ${k.total_matriculas} Registros (${k.total_clientes_unicos} Terceros/Clientes Únicos | ${k.clientes_multicurso_count} Multi-Movimiento)`;
+
+      const contBanner = document.getElementById('contabilidadBanner');
+      if (contBanner) {
+        if (m.contabilidad_resumen && m.contabilidad_resumen.es_contabilidad) {
+          const cr = m.contabilidad_resumen;
+          contBanner.style.display = 'block';
+          contBanner.innerHTML = `📑 <b>MODO AUXILIAR CONTABLE DIAN/SIIGO DETECTADO:</b> Facturación Servicios Cuenta <code>41800101</code> (${cr.total_facturas_fv} Facturas <b>FV-2</b>): <b>${fmtCOP(cr.total_credito_servicios_4180)}</b> • Devoluciones Cuenta <code>41750502</code> (${cr.total_notas_credito_nc} Notas Crédito <b>NC-2</b>): <b style="color:#fca5a5;">-${fmtCOP(cr.total_debito_devoluciones_4175)}</b> • <b>Ingreso Neto Contable: ${fmtCOP(cr.ingreso_neto_contable)}</b>`;
+        } else if (m.recibos_externos_cargados > 0) {
+          contBanner.style.display = 'block';
+          contBanner.innerHTML = `🔗 <b>CRUCE MULTIFORMATO ACTIVO:</b> Se cruzaron <b>${m.recibos_externos_cargados} comprobantes/recibos externos</b> (${m.recibos_huerfanos_cruzados} acreditados automáticamente por Cédula/NIT).`;
+        } else {
+          contBanner.style.display = 'none';
+        }
+      }
 
       // Contadores de pestañas
       document.getElementById('cnt_jt').textContent = h.jt_cartera.length;
+      const cntAllEl = document.getElementById('cnt_all');
+      if (cntAllEl) cntAllEl.textContent = (h.todas_matriculas || []).length;
       document.getElementById('cnt_cero_real').textContent = h.abono_cero_real.length;
       document.getElementById('cnt_cero_mc').textContent = h.abono_cero_multicurso.length;
       document.getElementById('cnt_mc_all').textContent = h.clientes_multicurso.length;
       document.getElementById('cnt_mora90').textContent = h.cartera_critica_90.length;
       document.getElementById('cnt_mora30').textContent = (h.mora_media_60.length + h.mora_temprana_30.length);
       document.getElementById('cnt_err').textContent = h.errores_digitacion.length;
+
+      if (h.jt_cartera.length === 0 && (h.todas_matriculas || []).length > 0 && ACTIVE_TAB === 'jt_cartera') {
+        ACTIVE_TAB = 'todas_matriculas';
+        document.querySelectorAll('#tabsHeader .tab-btn').forEach(b => b.classList.remove('active'));
+        const btnAll = document.getElementById('tabBtnTodas');
+        if (btnAll) btnAll.classList.add('active');
+      }
 
       // Renderizar KPIs
       const kpisHtml = `
@@ -1649,6 +2350,7 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
       let sourceList = [];
       let showMotivo = false;
       if (ACTIVE_TAB === 'jt_cartera') sourceList = h.jt_cartera;
+      else if (ACTIVE_TAB === 'todas_matriculas') sourceList = h.todas_matriculas || [];
       else if (ACTIVE_TAB === 'abono_cero_real') sourceList = h.abono_cero_real;
       else if (ACTIVE_TAB === 'abono_cero_multicurso') sourceList = h.abono_cero_multicurso;
       else if (ACTIVE_TAB === 'cartera_critica_90') sourceList = h.cartera_critica_90;
@@ -1874,9 +2576,11 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
           body: JSON.stringify({ action: 'conectar_sheets', credentials_json: rawJson })
         });
         const data = await res.json();
-        toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
-        toast.textContent = (data.ok ? '✅ ' : '❌ ') + data.message;
-        if (data.ok) {
+        const isOk = Array.isArray(data) ? Boolean(data[0]) : Boolean(data && data.ok);
+        const msg = Array.isArray(data) ? String(data[1] || '') : String((data && (data.message || data.error)) || '');
+        toast.className = isOk ? 'status-toast ok' : 'status-toast err';
+        toast.textContent = (isOk ? '✅ ' : '❌ ') + msg;
+        if (isOk) {
           await cargarBotOverview();
         }
       } catch (err) {
@@ -1922,63 +2626,122 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
         }
 
         // Actualizar badges de la barra de módulos
-        document.getElementById('nav_badge_clases').textContent = `${data.clases.kpis.total_alumnos} Alumnos`;
+        document.getElementById('nav_badge_clases').textContent = `${data.clases.kpis.en_curso} Activos • ${data.clases.kpis.finalizados} Fin.`;
         document.getElementById('nav_badge_nomina').textContent = `${data.nomina.total_clases} Clases`;
         document.getElementById('nav_badge_inas').textContent = `${data.inasistencias.kpis.total} (${data.inasistencias.kpis.pendientes} Pend.)`;
         document.getElementById('nav_badge_pesv').textContent = `${data.mantenimientos.kpis.total} Mant.`;
+
+        // Poblar selector de alumnos en el Módulo 6 (Robot Gestor)
+        const rbAlSel = document.getElementById('rb_alumno_select');
+        if (rbAlSel && data.clases && data.clases.alumnos) {
+          const curAl = rbAlSel.value;
+          rbAlSel.innerHTML = data.clases.alumnos.map(a =>
+            `<option value="${a.cedula || a.nombre}|${a.categoria}" ${(`${a.cedula || a.nombre}|${a.categoria}` === curAl) ? 'selected' : ''}>${a.nombre} (${a.categoria} - ${a.clases_completadas}/${a.total_requerido} - ${a.estado_curso})</option>`
+          ).join('');
+        }
 
         renderizarModuloClases();
         renderizarModuloNomina();
         renderizarModuloInasistencias();
         renderizarModuloPesv();
+        cargarBitacoraRobot();
       } catch (err) {
         console.error('Error cargando panorama del bot:', err);
       }
     }
 
+    function cambiarSubTabClases(filtroVal, btnEl) {
+      const sel = document.getElementById('filtroAlertaCartera');
+      if (sel) sel.value = filtroVal;
+      document.querySelectorAll('#clasesTabsHeader .tab-btn').forEach(b => b.classList.remove('active'));
+      if (btnEl) {
+        btnEl.classList.add('active');
+      } else {
+        const mapIdx = { 'EN_CURSO': 0, 'FINALIZADOS': 1, 'CON_SALDO': 2, 'CERO_REAL': 3, 'TODOS': 4 };
+        const btns = document.querySelectorAll('#clasesTabsHeader .tab-btn');
+        if (btns[mapIdx[filtroVal] || 0]) btns[mapIdx[filtroVal] || 0].classList.add('active');
+      }
+      renderizarModuloClases();
+    }
+
     function renderizarModuloClases() {
       if (!BOT_DATA || !BOT_DATA.clases) return;
       const kc = BOT_DATA.clases.kpis;
+      const todosAl = BOT_DATA.clases.alumnos || [];
+
+      // Contadores para las sub-pestañas
+      const cntActivos = todosAl.filter(a => a.estado_curso !== 'FINALIZADO').length;
+      const cntFin = todosAl.filter(a => a.estado_curso === 'FINALIZADO').length;
+      const cntSaldo = todosAl.filter(a => a.estado_curso !== 'FINALIZADO' && (a.saldo_cartera || 0) > 0).length;
+      const cntCero = todosAl.filter(a => a.estado_curso !== 'FINALIZADO' && a.alerta_cartera === 'RIESGO_CERO_REAL').length;
+
+      const elAct = document.getElementById('cnt_cl_activos');
+      const elFin = document.getElementById('cnt_cl_fin');
+      const elSal = document.getElementById('cnt_cl_saldo');
+      const elCer = document.getElementById('cnt_cl_cero');
+      const elTod = document.getElementById('cnt_cl_todos');
+      if (elAct) elAct.textContent = cntActivos;
+      if (elFin) elFin.textContent = cntFin;
+      if (elSal) elSal.textContent = cntSaldo;
+      if (elCer) elCer.textContent = cntCero;
+      if (elTod) elTod.textContent = todosAl.length;
+
       document.getElementById('kpiClasesGrid').innerHTML = `
         <div class="kpi-card">
-          <div class="kpi-label">Total Alumnos en Seguimiento</div>
-          <div class="kpi-value">${kc.total_alumnos}</div>
-          <div class="kpi-sub"><b>${kc.en_curso} en curso</b> • ${kc.finalizados} finalizados</div>
+          <div class="kpi-label">🟢 Alumnos Activos en Curso (&lt; 100%)</div>
+          <div class="kpi-value" style="color:#60a5fa;">${cntActivos} Alumnos</div>
+          <div class="kpi-sub">Separados de los <b>${cntFin} alumnos finalizados (100%)</b></div>
         </div>
         <div class="kpi-card success">
-          <div class="kpi-label">Sesiones Prácticas Registradas</div>
-          <div class="kpi-value" style="color:#34d399;">${kc.total_sesiones_registradas}</div>
-          <div class="kpi-sub">Formatos F-59, F-60, F-61 y F-62</div>
+          <div class="kpi-label">✅ Alumnos Finalizados (100% Clases)</div>
+          <div class="kpi-value" style="color:#34d399;">${cntFin} Alumnos</div>
+          <div class="kpi-sub"><b>${kc.total_sesiones_registradas} sesiones</b> en formatos F-59 a F-62</div>
         </div>
         <div class="kpi-card warning">
-          <div class="kpi-label">⚠️ En Clase con Saldo en Cartera</div>
-          <div class="kpi-value" style="color:#fde68a;">${kc.alumnos_con_mora_en_clase} Alumnos</div>
-          <div class="kpi-sub">Tienen clases prácticas y saldo pendiente</div>
+          <div class="kpi-label">⚠️ En Curso con Saldo en Cartera</div>
+          <div class="kpi-value" style="color:#fde68a;">${cntSaldo} Alumnos</div>
+          <div class="kpi-sub">Alumnos activos con saldo pendiente por cobrar</div>
         </div>
         <div class="kpi-card danger">
-          <div class="kpi-label">🚨 En Clase con Abono $0 Global</div>
-          <div class="kpi-value" style="color:#fca5a5;">${kc.alumnos_abono_cero_en_clase} Alumnos</div>
+          <div class="kpi-label">🚨 En Curso con Abono $0 Global</div>
+          <div class="kpi-value" style="color:#fca5a5;">${cntCero} Alumnos</div>
           <div class="kpi-sub">Bloquear programación práctica inmediata</div>
         </div>
       `;
 
       const q = (document.getElementById('searchClasesInput').value || '').trim().toLowerCase();
       const catF = document.getElementById('filtroCatClases').value;
-      const alertaF = document.getElementById('filtroAlertaCartera').value;
+      const alertaF = document.getElementById('filtroAlertaCartera').value || 'EN_CURSO';
 
-      const rows = (BOT_DATA.clases.alumnos || []).filter(a => {
+      // Sincronizar pestaña visual activa con el select
+      const mapIdx = { 'EN_CURSO': 0, 'FINALIZADOS': 1, 'CON_SALDO': 2, 'CERO_REAL': 3, 'TODOS': 4 };
+      const tabBtns = document.querySelectorAll('#clasesTabsHeader .tab-btn');
+      tabBtns.forEach((b, idx) => {
+        if (idx === mapIdx[alertaF]) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+
+      const rows = todosAl.filter(a => {
         if (catF !== 'TODAS' && a.categoria !== catF) return false;
-        if (alertaF === 'CON_SALDO' && (a.saldo_cartera || 0) <= 0) return false;
-        if (alertaF === 'CERO_REAL' && a.alerta_cartera !== 'RIESGO_CERO_REAL') return false;
+        if (alertaF === 'EN_CURSO' && a.estado_curso === 'FINALIZADO') return false;
         if (alertaF === 'FINALIZADOS' && a.estado_curso !== 'FINALIZADO') return false;
+        if (alertaF === 'CON_SALDO' && (a.estado_curso === 'FINALIZADO' || (a.saldo_cartera || 0) <= 0)) return false;
+        if (alertaF === 'CERO_REAL' && (a.estado_curso === 'FINALIZADO' || a.alerta_cartera !== 'RIESGO_CERO_REAL')) return false;
         if (!q) return true;
         return `${a.cedula} ${a.nombre} ${a.categoria} ${a.formato_codigo}`.toLowerCase().includes(q);
       });
 
-      document.getElementById('clasesCountInfo').textContent = `Mostrando ${rows.length} alumnos en seguimiento práctico`;
+      const etiquetasVista = {
+        'EN_CURSO': '🟢 Alumnos Activos en Curso (< 100%)',
+        'FINALIZADOS': '✅ Alumnos Finalizados (100% Completados)',
+        'CON_SALDO': '⚠️ Alumnos en Curso con Saldo Pendiente',
+        'CERO_REAL': '🚨 Alumnos en Curso con Abono $0 Global',
+        'TODOS': '📚 Histórico Completo (En Curso + Finalizados)'
+      };
+      document.getElementById('clasesCountInfo').textContent = `${etiquetasVista[alertaF] || ''} — Mostrando ${rows.length} alumnos`;
 
       document.getElementById('clasesTbody').innerHTML = rows.map(a => {
-        let badgeCartera = '<span class="badge badge-success">✅ Al Día / Sin Deuda</span>';
+        let badgeCartera = `<span class="badge badge-success">${a.alerta_texto || '✅ PAZ Y SALVO'}</span>`;
         if (a.alerta_cartera === 'RIESGO_CERO_REAL') {
           badgeCartera = `<span class="badge badge-danger">${a.alerta_texto}</span>`;
         } else if (a.alerta_cartera === 'MORA_CRITICA_90') {
@@ -1986,11 +2749,13 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
         } else if (a.alerta_cartera === 'CON_SALDO') {
           badgeCartera = `<span class="badge badge-warning">${a.alerta_texto}</span>`;
         } else if (a.alerta_cartera === 'NO_CRUZADO') {
-          badgeCartera = `<span class="badge">Sin cruce en Excel actual</span>`;
+          badgeCartera = `<span class="badge">Curso Práctico Activo</span>`;
         }
 
         const qParam = encodeURIComponent(a.cedula || a.nombre);
         const catParam = encodeURIComponent(a.categoria || 'A2');
+        const safeNombre = (a.nombre || '').replace(/'/g, "\\'");
+        const safeCedula = (a.cedula || a.nombre || '').replace(/'/g, "\\'");
 
         return `<tr>
           <td><code>${a.cedula || 'S/D'}</code></td>
@@ -2005,7 +2770,11 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
           <td>${badgeCartera}</td>
           <td class="${(a.saldo_cartera || 0) > 0 ? 'money-neg' : 'money-pos'}">${fmtCOP(a.saldo_cartera || 0)}</td>
           <td>
-            <a href="/api/bot/pdf/alumno?q=${qParam}&cat=${catParam}" class="btn btn-primary" style="padding:5px 10px; font-size:11.5px;">📄 PDF ${a.formato_codigo}</a>
+            <div style="display:flex; gap:5px; align-items:center;">
+              <a href="/api/bot/pdf/alumno?q=${qParam}&cat=${catParam}" class="btn btn-primary" style="padding:5px 9px; font-size:11px;" title="Descargar Ficha Oficial PDF">📄 PDF ${a.formato_codigo}</a>
+              <button type="button" class="btn btn-outline" style="padding:5px 7px; font-size:11px;" title="Enviar PDF F-59/F-62 al Telegram del CEA" onclick="enviarPdfAlumnoTelegram('${safeCedula}', '${safeNombre}', '${a.categoria}')">✈️</button>
+              <button type="button" class="btn btn-success" style="padding:5px 7px; font-size:11px;" title="Enviar reporte y link del PDF por WhatsApp" onclick="enviarInfoAlumnoWhatsApp('${safeCedula}', '${safeNombre}', '${a.categoria}', '${a.clases_completadas}/${a.total_requerido} (${a.porcentaje_avance}%)', ${a.saldo_cartera || 0})">📲</button>
+            </div>
           </td>
         </tr>`;
       }).join('') || '<tr><td colspan="9" style="text-align:center; color:var(--muted); padding:20px;">No hay alumnos que coincidan con el filtro seleccionado.</td></tr>';
@@ -2390,7 +3159,545 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
       window.location.href = `/api/bot/pdf/mantenimientos?periodo=${encodeURIComponent(per)}&placa=${encodeURIComponent(placa)}`;
     }
 
-    // Inicializar fecha por defecto de inasistencia hoy
+    // =========================================================================
+    // MÓDULO 6: ROBOT GESTOR DE ARCHIVOS Y DESPACHO MULTICANAL (TELEGRAM + WA)
+    // =========================================================================
+    async function enviarPdfAlumnoTelegram(cedulaOrNombre, nombre, cat) {
+      try {
+        const res = await fetch('/api/bot/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'robot_despachar_reporte',
+            reporte: 'FICHA_ALUMNO',
+            alumno_q: cedulaOrNombre,
+            categoria: cat,
+            canal: 'TELEGRAM'
+          })
+        });
+        const data = await res.json();
+        alert((data.ok ? '✅ ' : '❌ ') + (data.message || ''));
+        cargarBitacoraRobot();
+      } catch (err) {
+        alert('❌ Error enviando a Telegram: ' + err);
+      }
+    }
+
+    function enviarInfoAlumnoWhatsApp(cedulaOrNombre, nombre, cat, avance, saldo) {
+      const tel = (document.getElementById('rb_wa_phone') || {}).value || '573134908073';
+      const cleanTel = tel.replace(/\D+/g, '') || '573134908073';
+      const pdfUrl = `${window.location.origin}/api/bot/pdf/alumno?q=${encodeURIComponent(cedulaOrNombre)}&cat=${encodeURIComponent(cat)}`;
+      const msg = [
+        `🎓 *CEA AUTO ORIENTE — FICHA DE SEGUIMIENTO PRÁCTICO*`,
+        `👤 *Alumno:* ${nombre}`,
+        `🪪 *Cédula:* ${cedulaOrNombre}`,
+        `🏍️ *Categoría:* ${cat}`,
+        `📊 *Avance Clases:* ${avance}`,
+        `💰 *Saldo Cartera:* ${fmtCOP(saldo || 0)}`,
+        `📄 *Descargar Ficha Oficial PDF:* ${pdfUrl}`
+      ].join('\n');
+      window.open(`https://wa.me/${cleanTel}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    async function despacharReporteRobot(canal) {
+      const reporte = document.getElementById('rb_tipo_reporte').value;
+      const alVal = (document.getElementById('rb_alumno_select') || {}).value || '';
+      const [alumno_q, categoria] = alVal.split('|');
+      const chat_id = (document.getElementById('rb_chat_id') || {}).value.trim();
+      const wa_phone = (document.getElementById('rb_wa_phone') || {}).value.trim();
+      const toast = document.getElementById('rbDespachoToast');
+
+      toast.className = 'status-toast ok';
+      toast.textContent = '⏳ Generando documento oficial, clasificando en Archivo_Procesado y despachando...';
+
+      try {
+        const res = await fetch('/api/bot/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'robot_despachar_reporte',
+            reporte,
+            alumno_q: alumno_q || '',
+            categoria: categoria || 'A2',
+            canal,
+            chat_id,
+            wa_phone
+          })
+        });
+        const data = await res.json();
+        toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+        toast.textContent = (data.ok ? '✅ ' : '❌ ') + (data.message || '');
+        if (data.wa_url && (canal === 'WHATSAPP' || canal === 'AMBOS')) {
+          window.open(data.wa_url, '_blank');
+        }
+        cargarBitacoraRobot();
+      } catch (err) {
+        toast.className = 'status-toast err';
+        toast.textContent = '❌ Error: ' + err;
+      }
+    }
+
+    async function guardarConfigRobot() {
+      const tg_token = document.getElementById('cfg_tg_token').value.trim();
+      const tg_chat = document.getElementById('cfg_tg_chat').value.trim();
+      const wa_url = document.getElementById('cfg_wa_url').value.trim();
+      const wa_token = document.getElementById('cfg_wa_token').value.trim();
+      const wa_phone = document.getElementById('cfg_wa_phone').value.trim();
+      const toast = document.getElementById('cfgRobotToast');
+
+      const res = await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'robot_guardar_config',
+          tg_token, tg_chat, wa_url, wa_token, wa_phone
+        })
+      });
+      const data = await res.json();
+      toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+      toast.textContent = (data.ok ? '✅ ' : '❌ ') + (data.message || '');
+    }
+
+    async function cargarBitacoraRobot() {
+      try {
+        const res = await fetch('/api/bot/robot_log');
+        const data = await res.json();
+        if (!data.ok) return;
+
+        const cfg = data.config || {};
+        if (cfg.tg_chat && document.getElementById('cfg_tg_chat') && !document.getElementById('cfg_tg_chat').value) {
+          document.getElementById('cfg_tg_chat').value = cfg.tg_chat;
+        }
+        if (cfg.wa_phone && document.getElementById('cfg_wa_phone') && !document.getElementById('cfg_wa_phone').value) {
+          document.getElementById('cfg_wa_phone').value = cfg.wa_phone;
+        }
+        if (cfg.wa_url && document.getElementById('cfg_wa_url') && !document.getElementById('cfg_wa_url').value) {
+          document.getElementById('cfg_wa_url').value = cfg.wa_url;
+        }
+
+        const logs = data.bitacora || [];
+        const cntEl = document.getElementById('cntRobotLogs');
+        if (cntEl) cntEl.textContent = `${logs.length} procesados`;
+
+        const tbody = document.getElementById('robotLogTbody');
+        if (tbody) {
+          tbody.innerHTML = logs.map(l => `<tr>
+            <td><code>${l.fecha}</code></td>
+            <td><b>${l.archivo_original}</b></td>
+            <td><span class="badge badge-info">${l.tipo_clasificado}</span></td>
+            <td><code style="font-size:11px; color:#93c5fd;">${l.ruta_respaldo}</code></td>
+            <td><span class="badge badge-purple">${l.canal}</span></td>
+            <td><span class="badge badge-success">${l.estado}</span></td>
+          </tr>`).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--muted); padding:18px;">Aún no se han clasificado archivos en esta sesión. Usa el clasificador o despacha cualquier reporte arriba.</td></tr>';
+        }
+      } catch (err) {
+        console.error('Error cargando bitácora del robot:', err);
+      }
+    }
+
+    const rbForm = document.getElementById('robotUploadForm');
+    if (rbForm) {
+      rbForm.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const fileIn = document.getElementById('rbFileInput');
+        const canal = document.getElementById('rbUploadAccion').value;
+        const chat_id = (document.getElementById('rb_chat_id') || {}).value || '';
+        const wa_phone = (document.getElementById('rb_wa_phone') || {}).value || '';
+        const toast = document.getElementById('rbUploadToast');
+
+        if (!fileIn.files.length) return;
+        toast.className = 'status-toast ok';
+        toast.textContent = '⏳ Clasificando archivo y respaldando en Archivo_Procesado...';
+
+        const fd = new FormData();
+        fd.append('file', fileIn.files[0]);
+        fd.append('canal', canal);
+        fd.append('chat_id', chat_id);
+        fd.append('wa_phone', wa_phone);
+
+        try {
+          const res = await fetch('/api/bot/robot_upload', { method: 'POST', body: fd });
+          const data = await res.json();
+          toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+          toast.textContent = (data.ok ? '✅ ' : '❌ ') + (data.message || '');
+          if (data.wa_url && (canal === 'WHATSAPP' || canal === 'AMBOS')) {
+            window.open(data.wa_url, '_blank');
+          }
+          cargarBitacoraRobot();
+        } catch (err) {
+          toast.className = 'status-toast err';
+          toast.textContent = '❌ Error: ' + err;
+        }
+      });
+    }
+
+    // =========================================================================
+    // MÓDULO 7: BOT DE AGENDA Y GOOGLE CALENDAR INTEGRADO
+    // =========================================================================
+    let AGENDA_DATA = null;
+    async function cargarAgendaWeb() {
+      try {
+        const res = await fetch('/api/bot/agenda');
+        const data = await res.json();
+        if (!data.ok) return;
+        AGENDA_DATA = data;
+        const ka = data.kpis;
+        const bAg = document.getElementById('nav_badge_agenda');
+        if (bAg) bAg.textContent = `${ka.total_hoy} Hoy • ${ka.total_semana} Sem.`;
+        const lblHoy = document.getElementById('lblFechaHoyAgenda');
+        if (lblHoy) lblHoy.textContent = data.fecha_hoy;
+        const gcalBadge = document.getElementById('gcalStatusBadge');
+        if (gcalBadge) {
+          gcalBadge.className = data.calendar_conectado ? 'badge badge-success' : 'badge badge-purple';
+          gcalBadge.textContent = data.calendar_conectado ? '🟢 Google Calendar Sincronizado' : '🟣 Agenda CEA + Bot Telegram Activo';
+        }
+
+        const kpiEl = document.getElementById('kpiAgendaGrid');
+        if (kpiEl) {
+          kpiEl.innerHTML = `
+            <div class="kpi-card">
+              <div class="kpi-label">☀️ Actividades para Hoy (${data.fecha_hoy})</div>
+              <div class="kpi-value" style="color:#60a5fa;">${ka.total_hoy} Eventos</div>
+              <div class="kpi-sub">Con recordatorio automático a Telegram</div>
+            </div>
+            <div class="kpi-card purple">
+              <div class="kpi-label">📅 Eventos Próximos 7 Días</div>
+              <div class="kpi-value" style="color:#c4b5fd;">${ka.total_semana} Eventos</div>
+              <div class="kpi-sub">Sincronizados con el Bot de Agenda</div>
+            </div>
+            <div class="kpi-card success">
+              <div class="kpi-label">🔁 Rutinas Diarias del CEA</div>
+              <div class="kpi-value" style="color:#34d399;">${ka.recurrentes_diarios} Diarias</div>
+              <div class="kpi-sub">Auditoría, Remarketing y Cierres</div>
+            </div>
+            <div class="kpi-card warning">
+              <div class="kpi-label">📌 Eventos Puntuales</div>
+              <div class="kpi-value" style="color:#fde68a;">${ka.puntuales} Puntuales</div>
+              <div class="kpi-sub">Reuniones, RUNT, CRC y Gestión</div>
+            </div>
+          `;
+        }
+
+        const tbHoy = document.getElementById('agendaHoyTbody');
+        if (tbHoy) {
+          tbHoy.innerHTML = (data.eventos_hoy || []).map(e => {
+            const safeTit = (e.titulo || '').replace(/'/g, "\\'");
+            return `<tr>
+              <td><code>${e.hora}</code></td>
+              <td><b>${e.titulo}</b></td>
+              <td><span class="badge ${e.tipo === 'DIARIO' ? 'badge-purple' : 'badge-info'}">${e.tipo}</span></td>
+              <td>${e.responsable || 'CEA'}</td>
+              <td>
+                <button type="button" class="btn btn-primary" style="padding:4px 8px; font-size:11px;" onclick="recordarEventoTelegramWeb('${safeTit}', '${e.fecha}', '${e.hora}', '${e.responsable || 'CEA'}')">🔔 Telegram</button>
+              </td>
+            </tr>`;
+          }).join('') || '<tr><td colspan="5" style="text-align:center; color:var(--muted);">🌴 No tienes actividades agendadas para hoy.</td></tr>';
+        }
+
+        const tbSem = document.getElementById('agendaSemanaTbody');
+        if (tbSem) {
+          tbSem.innerHTML = (data.eventos_semana || []).map(e => {
+            const safeTit = (e.titulo || '').replace(/'/g, "\\'");
+            return `<tr>
+              <td><b>${e.fecha}</b></td>
+              <td><code>${e.hora}</code></td>
+              <td><b>${e.titulo}</b></td>
+              <td>${e.duracion_min || 60} min</td>
+              <td><span class="badge ${e.tipo === 'DIARIO' ? 'badge-purple' : 'badge-info'}">${e.tipo}</span></td>
+              <td>${e.responsable || 'CEA'}</td>
+              <td><span class="badge badge-success">${e.estado || 'PROGRAMADO'}</span></td>
+              <td>
+                <div style="display:flex; gap:5px;">
+                  <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="recordarEventoTelegramWeb('${safeTit}', '${e.fecha}', '${e.hora}', '${e.responsable || 'CEA'}')">🔔 Recordar TG</button>
+                  <button type="button" class="btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="eliminarEventoAgendaWeb('${e.id}')">🗑️</button>
+                </div>
+              </td>
+            </tr>`;
+          }).join('') || '<tr><td colspan="8" style="text-align:center; color:var(--muted);">No hay eventos programados en los próximos 7 días.</td></tr>';
+        }
+      } catch (err) {
+        console.error('Error cargando agenda:', err);
+      }
+    }
+
+    async function crearEventoAgendaWeb() {
+      const titulo = document.getElementById('ag_titulo').value.trim();
+      const fecha = document.getElementById('ag_fecha').value;
+      const hora = document.getElementById('ag_hora').value;
+      const duracion_min = document.getElementById('ag_duracion').value;
+      const tipo = document.getElementById('ag_tipo').value;
+      const responsable = document.getElementById('ag_responsable').value.trim();
+      const chat_id = document.getElementById('ag_chat_id').value.trim();
+      const toast = document.getElementById('agendaToast');
+
+      if (!titulo) {
+        toast.className = 'status-toast err';
+        toast.textContent = '⚠️ Escribe el título o actividad del evento.';
+        return;
+      }
+      const res = await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'agenda_crear_evento',
+          titulo, fecha, hora, duracion_min,
+          es_diario: tipo === 'DIARIO',
+          responsable, chat_id
+        })
+      });
+      const data = await res.json();
+      toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+      toast.textContent = (data.ok ? '✅ ' : '❌ ') + (data.message || '');
+      if (data.ok) {
+        document.getElementById('ag_titulo').value = '';
+        cargarAgendaWeb();
+      }
+    }
+
+    async function recordarEventoTelegramWeb(titulo, fecha, hora, responsable) {
+      const chat_id = (document.getElementById('ag_chat_id') || {}).value || '';
+      const res = await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'agenda_recordar_telegram', titulo, fecha, hora, responsable, chat_id })
+      });
+      const data = await res.json();
+      alert((data.ok ? '✅ ' : '⚠️ ') + (data.message || ''));
+    }
+
+    async function eliminarEventoAgendaWeb(id) {
+      await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'agenda_eliminar_evento', id })
+      });
+      cargarAgendaWeb();
+    }
+
+    // =========================================================================
+    // MÓDULO 8: CRM WHATSAPP IA, ESTADÍSTICAS DE ABANDONO Y REMARKETING
+    // =========================================================================
+    let WA_CRM_DATA = null;
+
+    async function cargarWhatsappCrm() {
+      try {
+        const res = await fetch('/api/bot/whatsapp_crm');
+        const data = await res.json();
+        if (!data.ok) return;
+        WA_CRM_DATA = data;
+
+        const kw = data.kpis;
+        const bWa = document.getElementById('nav_badge_wa');
+        if (bWa) bWa.textContent = `${kw.sin_concluir_total} Pend. (${kw.tasa_abandono_ia_pct}%)`;
+
+        const selPlant = document.getElementById('wa_plantilla_sel');
+        const txtPlant = document.getElementById('wa_plantilla_txt');
+        if (selPlant && txtPlant && data.plantillas && !txtPlant.value) {
+          const cod = selPlant.value || 'IA_RECUPERACION_50';
+          if (data.plantillas[cod]) txtPlant.value = data.plantillas[cod].texto;
+        }
+
+        renderizarModuloWhatsapp();
+      } catch (err) {
+        console.error('Error cargando CRM WhatsApp IA:', err);
+      }
+    }
+
+    function cambiarPlantillaRemarketing() {
+      if (!WA_CRM_DATA || !WA_CRM_DATA.plantillas) return;
+      const cod = document.getElementById('wa_plantilla_sel').value;
+      const p = WA_CRM_DATA.plantillas[cod];
+      if (p) document.getElementById('wa_plantilla_txt').value = p.texto;
+    }
+
+    async function guardarPlantillaRemarketingWeb() {
+      const codigo = document.getElementById('wa_plantilla_sel').value;
+      const texto = document.getElementById('wa_plantilla_txt').value.trim();
+      const toast = document.getElementById('waPlantillaToast');
+      const res = await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'wa_guardar_plantilla', codigo, texto })
+      });
+      const data = await res.json();
+      toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+      toast.textContent = (data.ok ? '✅ ' : '❌ ') + (data.message || '');
+      cargarWhatsappCrm();
+    }
+
+    function renderizarModuloWhatsapp() {
+      if (!WA_CRM_DATA) return;
+      const kw = WA_CRM_DATA.kpis;
+      const kpiEl = document.getElementById('kpiWhatsappGrid');
+      if (kpiEl) {
+        kpiEl.innerHTML = `
+          <div class="kpi-card">
+            <div class="kpi-label">💬 Total Consultas WhatsApp IA</div>
+            <div class="kpi-value">${kw.total_consultas} Prospectos</div>
+            <div class="kpi-sub">Anuncios FB/IG (<code>fb.me</code>) y Chat Directo</div>
+          </div>
+          <div class="kpi-card warning">
+            <div class="kpi-label">🟢 Atendidos por IA — Sin Concluir</div>
+            <div class="kpi-value" style="color:#fde68a;">${kw.pendientes_ia} (${kw.tasa_abandono_ia_pct}%)</div>
+            <div class="kpi-sub">Preguntaron, la IA respondió y quedaron ahí</div>
+          </div>
+          <div class="kpi-card danger">
+            <div class="kpi-label">🔴 Piden Asesor + 📲 En Remarketing</div>
+            <div class="kpi-value" style="color:#fca5a5;">${kw.transferidos_asesor} Asesor • ${kw.en_remarketing} RMK</div>
+            <div class="kpi-sub">Potencial por cerrar: <b>${fmtCOP(kw.ingreso_potencial_pendiente)}</b></div>
+          </div>
+          <div class="kpi-card success">
+            <div class="kpi-label">✅ Matriculados (Conversión Real)</div>
+            <div class="kpi-value" style="color:#34d399;">${kw.matriculados} (${kw.tasa_conversion_pct}%)</div>
+            <div class="kpi-sub">Cerrado en caja: <b>${fmtCOP(kw.ingreso_cerrado_real)}</b></div>
+          </div>
+        `;
+      }
+
+      const filtroEst = (document.getElementById('wa_filtro_estado') || {}).value || 'SIN_CONCLUIR';
+      const q = ((document.getElementById('searchWhatsappInput') || {}).value || '').trim().toLowerCase();
+
+      const rows = (WA_CRM_DATA.leads || []).filter(l => {
+        if (filtroEst === 'SIN_CONCLUIR' && (l.estado_ia === 'MATRICULADO' || l.estado_ia === 'DESCARTADO')) return false;
+        if (filtroEst !== 'TODOS' && filtroEst !== 'SIN_CONCLUIR' && l.estado_ia !== filtroEst) return false;
+        if (!q) return true;
+        return `${l.telefono} ${l.nombre} ${l.categoria_interes} ${l.ultimo_mensaje_cliente} ${l.notas}`.toLowerCase().includes(q);
+      });
+
+      const infoEl = document.getElementById('waCountInfo');
+      if (infoEl) infoEl.textContent = `Mostrando ${rows.length} prospectos en este filtro`;
+
+      const tbody = document.getElementById('waLeadsTbody');
+      if (!tbody) return;
+      tbody.innerHTML = rows.map(l => {
+        let badgeEst = '<span class="badge badge-warning">🟢 Responde la IA (Sin concluir)</span>';
+        if (l.estado_ia === 'TRANSFERENCIA_ASESOR') {
+          badgeEst = '<span class="badge badge-danger">🔴 Transferencia de IA (Asesor)</span>';
+        } else if (l.estado_ia === 'REMARKETING_ENVIADO') {
+          badgeEst = '<span class="badge badge-purple">📲 Remarketing Enviado</span>';
+        } else if (l.estado_ia === 'MATRICULADO') {
+          badgeEst = `<span class="badge badge-success">✅ MATRICULADO (${l.matricula_cruzada || 'Cerrado'})</span>`;
+        } else if (l.estado_ia === 'DESCARTADO') {
+          badgeEst = '<span class="badge">❄️ Descartado</span>';
+        }
+
+        const safeNombre = (l.nombre || '').replace(/'/g, "\\'");
+        const safeCat = (l.categoria_interes || 'A2').replace(/'/g, "\\'");
+
+        return `<tr>
+          <td><code>+${l.telefono}</code></td>
+          <td><b>${l.nombre}</b><br><span style="font-size:11px; color:var(--muted);">${l.origen || ''}</span></td>
+          <td><span class="badge badge-info">${l.categoria_interes}</span></td>
+          <td class="money-pos">${fmtCOP(l.valor_estimado || 0)}</td>
+          <td>${badgeEst}</td>
+          <td style="white-space:normal; max-width:290px; font-size:11.5px;">
+            <b>Cliente:</b> "${l.ultimo_mensaje_cliente || ''}"<br>
+            <span style="color:#93c5fd;"><b>IA:</b> ${l.ultima_respuesta_ia || ''}</span>
+          </td>
+          <td><code>${l.fecha_ultimo_contacto || l.fecha_consulta || ''}</code></td>
+          <td style="text-align:center;"><span class="badge">${l.intentos_remarketing || 0} envíos</span></td>
+          <td>
+            <div style="display:flex; gap:5px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-success" style="padding:5px 9px; font-size:11px;" onclick="enviarRemarketingIndividual('${l.id}', '${l.telefono}', '${safeNombre}', '${safeCat}')">📲 Enviar Plantilla WA</button>
+              <button type="button" class="btn btn-primary" style="padding:5px 7px; font-size:11px;" title="Marcar como Matriculado" onclick="cambiarEstadoLeadWeb('${l.id}', 'MATRICULADO')">✅ Cerró</button>
+              <button type="button" class="btn btn-outline" style="padding:5px 7px; font-size:11px;" title="Marcar en Transferencia Asesor" onclick="cambiarEstadoLeadWeb('${l.id}', 'TRANSFERENCIA_ASESOR')">🔴</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="9" style="text-align:center; color:var(--muted); padding:20px;">No hay prospectos en este filtro.</td></tr>';
+    }
+
+    async function enviarRemarketingIndividual(leadId, telefono, nombre, categoria) {
+      let plantilla = (document.getElementById('wa_plantilla_txt') || {}).value || '';
+      if (!plantilla && WA_CRM_DATA && WA_CRM_DATA.plantillas) {
+        plantilla = WA_CRM_DATA.plantillas.IA_RECUPERACION_50.texto;
+      }
+      const cleanNombre = (nombre || 'futuro conductor').replace(/\(.*\)/g, '').trim();
+      const msg = plantilla
+        .replace(/\{nombre\}/gi, cleanNombre)
+        .replace(/\{categoria\}/gi, categoria || 'Moto A2 / Carro B1');
+
+      const cleanTel = (telefono || '').replace(/\D+/g, '');
+      window.open(`https://wa.me/${cleanTel}?text=${encodeURIComponent(msg)}`, '_blank');
+
+      await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'wa_cambiar_estado',
+          id: leadId,
+          estado_ia: 'REMARKETING_ENVIADO',
+          incrementar_remarketing: true
+        })
+      });
+      cargarWhatsappCrm();
+    }
+
+    function lanzarSiguienteRemarketingPendiente() {
+      if (!WA_CRM_DATA || !WA_CRM_DATA.leads) return;
+      const pendiente = WA_CRM_DATA.leads.find(l => l.estado_ia === 'RESPONDE_IA_PENDIENTE' || l.estado_ia === 'TRANSFERENCIA_ASESOR');
+      if (!pendiente) {
+        alert('🎉 ¡Excelente! Todos los clientes pendientes de la IA ya recibieron su mensaje de remarketing.');
+        return;
+      }
+      enviarRemarketingIndividual(pendiente.id, pendiente.telefono, pendiente.nombre, pendiente.categoria_interes);
+    }
+
+    async function registrarLeadWhatsappWeb() {
+      const telefono = document.getElementById('wa_tel').value.trim();
+      const nombre = document.getElementById('wa_nombre').value.trim();
+      const categoria_interes = document.getElementById('wa_cat').value;
+      const estado_ia = document.getElementById('wa_estado').value;
+      const ultimo_mensaje_cliente = document.getElementById('wa_msg').value.trim();
+      const toast = document.getElementById('waLeadToast');
+
+      const res = await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'wa_registrar_lead',
+          telefono, nombre, categoria_interes, estado_ia, ultimo_mensaje_cliente
+        })
+      });
+      const data = await res.json();
+      toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+      toast.textContent = (data.ok ? '✅ ' : '❌ ') + (data.message || '');
+      if (data.ok) {
+        document.getElementById('wa_tel').value = '';
+        document.getElementById('wa_nombre').value = '';
+        document.getElementById('wa_msg').value = '';
+        cargarWhatsappCrm();
+      }
+    }
+
+    async function importarLoteWhatsappWeb() {
+      const texto = document.getElementById('wa_lote_txt').value.trim();
+      const categoria_default = document.getElementById('wa_cat').value || 'A2';
+      const toast = document.getElementById('waLeadToast');
+      const res = await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'wa_importar_lote', texto, categoria_default })
+      });
+      const data = await res.json();
+      toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+      toast.textContent = (data.ok ? '✅ ' : '❌ ') + (data.message || '');
+      if (data.ok) {
+        document.getElementById('wa_lote_txt').value = '';
+        cargarWhatsappCrm();
+      }
+    }
+
+    async function cambiarEstadoLeadWeb(leadId, nuevoEstado) {
+      await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'wa_cambiar_estado', id: leadId, estado_ia: nuevoEstado })
+      });
+      cargarWhatsappCrm();
+    }
+
+    // Inicializar fecha por defecto de inasistencia y agenda hoy
     (function initDefaults() {
       const hoy = new Date();
       const dd = String(hoy.getDate()).padStart(2, '0');
@@ -2398,10 +3705,14 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
       const yyyy = hoy.getFullYear();
       const inFecha = document.getElementById('in_fecha');
       if (inFecha) inFecha.value = `${dd}/${mm}/${yyyy}`;
+      const agFecha = document.getElementById('ag_fecha');
+      if (agFecha) agFecha.value = `${yyyy}-${mm}-${dd}`;
     })();
 
     cargarDatos();
     cargarBotOverview();
+    cargarAgendaWeb();
+    cargarWhatsappCrm();
   </script>
 </body>
 </html>
@@ -2617,6 +3928,64 @@ class AuditorWebHandler(BaseHTTPRequestHandler):
             self.wfile.write(pdf_bytes)
             return
 
+        if self.path.startswith("/api/bot/robot_log"):
+            cfg = _cargar_robot_config()
+            cfg_safe = {
+                "tg_chat": cfg.get("tg_chat", ""),
+                "wa_url": cfg.get("wa_url", ""),
+                "wa_phone": cfg.get("wa_phone", ""),
+            }
+            self._send_json({
+                "ok": True,
+                "config": cfg_safe,
+                "bitacora": _cargar_robot_bitacora(),
+            })
+            return
+
+        if self.path.startswith("/api/bot/download_robot_script"):
+            script_path = BASE_DIR / "robot_gestor_cea.py"
+            if script_path.exists():
+                raw_script = script_path.read_bytes()
+            else:
+                raw_script = b"# robot_gestor_cea.py\n"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/x-python; charset=utf-8")
+            self.send_header("Content-Disposition", 'attachment; filename="robot_gestor_cea.py"')
+            self.send_header("Content-Length", str(len(raw_script)))
+            self.end_headers()
+            self.wfile.write(raw_script)
+            return
+
+        if self.path.startswith("/api/bot/download_agenda_script"):
+            script_path = BASE_DIR / "bot_agenda_cea.py"
+            if script_path.exists():
+                raw_script = script_path.read_bytes()
+            else:
+                raw_script = b"# bot_agenda_cea.py\n"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/x-python; charset=utf-8")
+            self.send_header("Content-Disposition", 'attachment; filename="bot_agenda_cea.py"')
+            self.send_header("Content-Length", str(len(raw_script)))
+            self.end_headers()
+            self.wfile.write(raw_script)
+            return
+
+        if self.path.startswith("/api/bot/agenda"):
+            try:
+                res_ag = bot_agenda_cea.obtener_panorama_agenda_web()
+                self._send_json(res_ag)
+            except Exception as exc:
+                self._send_json({"ok": False, "error": str(exc)}, 500)
+            return
+
+        if self.path.startswith("/api/bot/whatsapp_crm"):
+            try:
+                res_wa = crm_whatsapp_cea.obtener_panorama_whatsapp_crm(STATE.get("hallazgos"))
+                self._send_json(res_wa)
+            except Exception as exc:
+                self._send_json({"ok": False, "error": str(exc)}, 500)
+            return
+
         self.send_response(404)
         self.end_headers()
 
@@ -2775,6 +4144,8 @@ class AuditorWebHandler(BaseHTTPRequestHandler):
             if action == "conectar_sheets":
                 raw_json = str(payload.get("credentials_json", "")).strip()
                 res = clases_core.sheets_service.configurar_credenciales_en_vivo(raw_json)
+                if isinstance(res, tuple):
+                    res = {"ok": bool(res[0]), "message": str(res[1])}
                 self._send_json(res)
                 return
 
@@ -2894,7 +4265,177 @@ class AuditorWebHandler(BaseHTTPRequestHandler):
                 })
                 return
 
+            if action == "robot_guardar_config":
+                cfg_saved = _guardar_robot_config(payload)
+                self._send_json({
+                    "ok": True,
+                    "message": f"Configuración guardada (Telegram Chat: {cfg_saved.get('tg_chat') or 'Predeterminado'}, WhatsApp: +{cfg_saved.get('wa_phone')}).",
+                })
+                return
+
+            if action == "robot_despachar_reporte":
+                reporte_tipo = str(payload.get("reporte", "CARTERA_PDF")).strip().upper()
+                canal = str(payload.get("canal", "TELEGRAM")).strip().upper()
+                chat_id = str(payload.get("chat_id", "")).strip()
+                wa_phone = str(payload.get("wa_phone", "")).strip()
+                alumno_q = str(payload.get("alumno_q", "")).strip()
+                cat_val = str(payload.get("categoria", "A2")).strip().upper()
+                fecha_str = datetime.date.today().strftime("%Y%m%d")
+
+                file_bytes = b""
+                fname = f"Reporte_CEA_{fecha_str}.pdf"
+                download_path = "/api/download/pdf"
+                caption_extra = "Reporte Oficial CEA Auto Oriente"
+
+                if reporte_tipo == "CARTERA_PDF":
+                    file_bytes = STATE.get("pdf_bytes") or b""
+                    fname = f"Resumen_Ejecutivo_Cartera_CEA_{fecha_str}.pdf"
+                    download_path = "/api/download/pdf"
+                    caption_extra = "📊 Dictamen Ejecutivo de Cartera y Auditoría Multi-Curso"
+                elif reporte_tipo == "CARTERA_EXCEL":
+                    file_bytes = STATE.get("excel_bytes") or b""
+                    fname = f"Auditoria_Cartera_MultiPestana_CEA_{fecha_str}.xlsx"
+                    download_path = "/api/download/excel"
+                    caption_extra = "📗 Libro Excel Multi-Pestaña de Auditoría y Cartera CEA"
+                elif reporte_tipo == "FICHA_ALUMNO":
+                    res_al = clases_core.sheets_service.obtener_historial_alumno(alumno_q)
+                    alumno = res_al.get("alumno") or {"cedula": alumno_q, "nombre": alumno_q or "ALUMNO CEA", "categoria": cat_val, "telefono": ""}
+                    if cat_val and cat_val in clases_core.FORMATOS_OFICIALES:
+                        alumno["categoria"] = cat_val
+                    registros = [
+                        r for r in (res_al.get("registros") or [])
+                        if not cat_val or str(r.get("categoria", "")).strip().upper() == cat_val
+                    ] or (res_al.get("registros") or [])
+                    pdf_buf = clases_core.generar_pdf_seguimiento(alumno, registros)
+                    file_bytes = pdf_buf.getvalue()
+                    safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", str(alumno.get("nombre", "Alumno")))
+                    fname = f"Ficha_Seguimiento_{alumno.get('categoria', 'A2')}_{safe_name}.pdf"
+                    download_path = f"/api/bot/pdf/alumno?q={urllib.parse.quote(alumno_q)}&cat={urllib.parse.quote(cat_val)}"
+                    caption_extra = f"🎓 Ficha Oficial de Clases Prácticas — {alumno.get('nombre')} ({alumno.get('categoria')})"
+                elif reporte_tipo == "NOMINA_PDF":
+                    rep_nom = clases_core.sheets_service.obtener_clases_por_instructor_periodo("TODOS", "mes")
+                    file_bytes = clases_core.generar_pdf_liquidacion_instructor(rep_nom).getvalue()
+                    fname = f"Nomina_Liquidacion_Instructores_{fecha_str}.pdf"
+                    download_path = "/api/bot/pdf/nomina?instructor=TODOS&periodo=mes"
+                    caption_extra = "👨‍🏫 Liquidación Mensual de Instructores y Auditoría de Horarios"
+                elif reporte_tipo == "INASISTENCIAS_PDF":
+                    rep_in = clases_core.sheets_service.obtener_inasistencias_periodo("todo", "TODOS")
+                    file_bytes = clases_core.generar_pdf_inasistencias_periodo(rep_in).getvalue()
+                    fname = f"Reporte_Inasistencias_CEA_{fecha_str}.pdf"
+                    download_path = "/api/bot/pdf/inasistencias?periodo=todo&estado=TODOS"
+                    caption_extra = "🚫 Reporte Consolidado de Inasistencias y Recaudo"
+                elif reporte_tipo == "PESV_PDF":
+                    rep_mt = clases_core.sheets_service.obtener_mantenimientos_periodo("todo", "TODAS")
+                    file_bytes = clases_core.generar_pdf_mantenimientos_pesv(rep_mt).getvalue()
+                    fname = f"PESV_SISI_F2_08_Flota_{fecha_str}.pdf"
+                    download_path = "/api/bot/pdf/mantenimientos?periodo=todo&placa=TODAS"
+                    caption_extra = "🔧 Historial Oficial PESV SISI-F2-08 — Mantenimiento de Flota CEA"
+
+                if not file_bytes:
+                    self._send_json({"ok": False, "message": "No se pudo generar el archivo solicitado."}, 400)
+                    return
+
+                res_arch = _clasificar_y_respaldar_archivo(
+                    filename=fname,
+                    file_bytes=file_bytes,
+                    canal=canal,
+                    chat_id=chat_id,
+                    wa_phone=wa_phone,
+                )
+                if canal in ("WHATSAPP", "AMBOS") and not res_arch.get("wa_url"):
+                    _, _, wa_link = _despachar_whatsapp_api_o_link(
+                        file_bytes, fname, caption_extra, phone=wa_phone, download_path=download_path
+                    )
+                    res_arch["wa_url"] = wa_link
+                self._send_json(res_arch)
+                return
+
+            if action == "agenda_crear_evento":
+                res_ev = bot_agenda_cea.crear_evento_agenda(
+                    summary=str(payload.get("summary", "")).strip(),
+                    fecha_str=str(payload.get("fecha", "")).strip(),
+                    hora_str=str(payload.get("hora", "09:00")).strip(),
+                    recurrente_diario=bool(payload.get("recurrente_diario", False)),
+                    descripcion=str(payload.get("descripcion", "")).strip(),
+                )
+                self._send_json(res_ev)
+                return
+
+            if action == "agenda_eliminar_evento":
+                res_del = bot_agenda_cea.eliminar_evento_agenda(
+                    event_id=str(payload.get("event_id", "")).strip()
+                )
+                self._send_json(res_del)
+                return
+
+            if action == "agenda_recordar_telegram":
+                res_tg_ag = bot_agenda_cea.enviar_recordatorio_telegram_agenda(
+                    chat_id=str(payload.get("chat_id", "")).strip(),
+                    rango=str(payload.get("rango", "semana")).strip(),
+                )
+                self._send_json(res_tg_ag)
+                return
+
+            if action == "wa_registrar_lead":
+                res_wl = crm_whatsapp_cea.registrar_o_actualizar_lead(payload)
+                self._send_json(res_wl)
+                return
+
+            if action == "wa_cambiar_estado":
+                res_st = crm_whatsapp_cea.cambiar_estado_lead(
+                    lead_id=str(payload.get("id", "")).strip(),
+                    nuevo_estado=str(payload.get("estado", "REMARKETING_ENVIADO")).strip(),
+                )
+                self._send_json(res_st)
+                return
+
+            if action == "wa_importar_lote":
+                res_imp = crm_whatsapp_cea.importar_lote_whatsapp_texto(
+                    raw_text=str(payload.get("raw_text", "")),
+                    estado_default=str(payload.get("estado_default", "IA_PENDIENTE")).strip(),
+                )
+                self._send_json(res_imp)
+                return
+
+            if action == "wa_guardar_plantilla":
+                res_pl = crm_whatsapp_cea.guardar_plantilla(payload)
+                self._send_json(res_pl)
+                return
+
             self._send_json({"ok": False, "message": f"Acción desconocida: {action}"}, 400)
+            return
+
+        if self.path == "/api/bot/robot_upload":
+            try:
+                content_type = self.headers.get("Content-Type", "")
+                length = int(self.headers.get("Content-Length", "0"))
+                raw_body = self.rfile.read(length) if length > 0 else b""
+                parts = _parse_multipart_binary(content_type, raw_body)
+                if "file" not in parts:
+                    self._send_json({"ok": False, "message": "No se recibió ningún archivo."}, 400)
+                    return
+                fn, fbytes = parts["file"]
+                filename = fn or "documento.pdf"
+                canal = "SOLO_CLASIFICAR"
+                if "canal" in parts and parts["canal"][1]:
+                    canal = parts["canal"][1].decode("utf-8", errors="ignore").strip() or "SOLO_CLASIFICAR"
+                chat_id = ""
+                if "chat_id" in parts and parts["chat_id"][1]:
+                    chat_id = parts["chat_id"][1].decode("utf-8", errors="ignore").strip()
+                wa_phone = ""
+                if "wa_phone" in parts and parts["wa_phone"][1]:
+                    wa_phone = parts["wa_phone"][1].decode("utf-8", errors="ignore").strip()
+
+                res_up = _clasificar_y_respaldar_archivo(
+                    filename=filename,
+                    file_bytes=fbytes,
+                    canal=canal,
+                    chat_id=chat_id,
+                    wa_phone=wa_phone,
+                )
+                self._send_json(res_up)
+            except Exception as exc:
+                self._send_json({"ok": False, "message": f"Error clasificando archivo: {exc}"}, 500)
             return
 
         self.send_response(404)

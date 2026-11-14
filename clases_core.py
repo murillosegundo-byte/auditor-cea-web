@@ -733,7 +733,7 @@ PALABRAS_CORTE_CLASE = (
     r"calzadas?|carril(?:es)?|pares|barrios?|flujo|vehicular|refuerzos?|cale|"
     r"glorietas?|intersecciones|deprimidos|puentes|zonas|escolares|"
     r"urban[oa]s?|nacional(?:es)?|principales|pista|v[ií]as?|transporte|masivo|buses|taxis|"
-    r"motos?|motocicletas?|carros?|veh[ií]culos?|instructor(?:es)?|profes?(?:or)?|notas?"
+    r"motos?|motocicletas?|carros?|veh[ií]culos?|instructor(?:es)?|profes?(?:or)?|notas?|teor[ií]a|te[oó]ric[oa]s?"
     r")\b"
 )
 
@@ -1134,14 +1134,22 @@ class SheetsService:
 
     @property
     def conectado_en_vivo(self) -> bool:
+        if self._spreadsheet is None:
+            try:
+                self.conectar()
+            except Exception:
+                pass
         return self._spreadsheet is not None
 
-    def configurar_credenciales_en_vivo(self, raw_json: str) -> Tuple[bool, str]:
+    def configurar_credenciales_en_vivo(self, raw_json: str) -> Dict[str, Any]:
         """Permite subir o pegar credentials.json directamente desde el Dashboard Web."""
         try:
             info = json.loads(raw_json)
             if "client_email" not in info or "private_key" not in info:
-                return False, "El archivo JSON no contiene 'client_email' ni 'private_key' de Service Account."
+                return {
+                    "ok": False,
+                    "message": "El archivo JSON no contiene 'client_email' ni 'private_key' de Service Account.",
+                }
             os.environ["GOOGLE_CREDENTIALS_JSON_RUNTIME"] = raw_json
             try:
                 Path("/tmp/cea_google_credentials.json").write_text(raw_json, encoding="utf-8")
@@ -1153,10 +1161,16 @@ class SheetsService:
             self._cache_lecturas.clear()
             self._sembrado_ejecutado = False
             self.conectar()
-            return True, f"Conectado exitosamente a Google Sheets ({info.get('client_email')})."
+            return {
+                "ok": True,
+                "message": f"Conectado exitosamente en vivo a Google Sheets ({info.get('client_email')}).",
+            }
         except Exception as exc:
             self._ultimo_error_msg = str(exc)
-            return False, f"Error conectando a Google Sheets: {exc}"
+            return {
+                "ok": False,
+                "message": f"Error conectando a Google Sheets: {exc}",
+            }
 
     def conectar(self) -> gspread.Spreadsheet:
         if self._spreadsheet is None:
@@ -1566,7 +1580,8 @@ class SheetsService:
             filtrar_cat = categoria and categoria.strip().upper() not in ("TODAS", "REFUERZO")
 
             for idx_r, f in enumerate(registros, start=2):
-                nombre = str(f.get("Nombre_Completo", "")).strip()
+                raw_nom = str(f.get("Nombre_Completo", "")).strip()
+                nombre = limpiar_solo_nombre_persona(raw_nom) or raw_nom
                 if not nombre:
                     continue
                 doc = str(f.get("Documento", "")).strip()
@@ -3301,12 +3316,14 @@ class SheetsService:
         except Exception as exc:
             logger.warning("Aviso cruzando Registro_Clases en obtener_panorama_web: %s", exc)
 
-        # Mapa de cartera por Cédula y por Nombre para cruce instantáneo
+        # Mapa de cartera por Cédula y por Nombre para cruce instantáneo (incluyendo Paz y Salvo de todas_matriculas)
         mapa_cartera_doc: Dict[str, Dict[str, Any]] = {}
         mapa_cartera_nom: Dict[str, Dict[str, Any]] = {}
+        lista_cartera_tokens: List[Tuple[set, Dict[str, Any]]] = []
         registros_cartera_unificados: List[Dict[str, Any]] = []
         if hallazgos_cartera and isinstance(hallazgos_cartera, dict):
             for key_lista in (
+                "todas_matriculas",
                 "registros",
                 "jt_cartera",
                 "abono_cero_real",
@@ -3334,6 +3351,9 @@ class SheetsService:
                     mapa_cartera_doc[doc_c] = info_c
                 if nom_c:
                     mapa_cartera_nom[nom_c] = info_c
+                    toks = {t for t in nom_c.split() if len(t) >= 3}
+                    if len(toks) >= 2:
+                        lista_cartera_tokens.append((toks, info_c))
 
         if not alumnos_todos and not self.conectado_en_vivo and registros_cartera_unificados:
             vistos_seed_alu = set()
@@ -3375,6 +3395,13 @@ class SheetsService:
             doc_a = _normalizar_texto(str(alu.get("Documento", "")))
             nom_a = _normalizar_texto(str(alu.get("Nombre_Completo", "")))
             c_info = mapa_cartera_doc.get(doc_a) or mapa_cartera_nom.get(nom_a)
+            if not c_info and nom_a:
+                toks_a = {t for t in nom_a.split() if len(t) >= 3 and t not in ("teoria", "clase", "practica")}
+                if len(toks_a) >= 2:
+                    for toks_c, cand_info in lista_cartera_tokens:
+                        if toks_a.issubset(toks_c) or toks_c.issubset(toks_a):
+                            c_info = cand_info
+                            break
             if c_info:
                 alu["Cartera_Cruzada"] = True
                 alu["Saldo_Cartera"] = c_info["saldo_cliente"]
@@ -3437,25 +3464,29 @@ class SheetsService:
             req_a = int(alu.get("Clases_Requeridas", cfg_a.get("total_clases", 20)) or 20)
             pct_a = min(100, int(round((comp_a / max(1, req_a)) * 100)))
             saldo_c = float(alu.get("Saldo_Cartera", 0) or 0)
+            abonado_c = float(alu.get("Abonado_Cartera", 0) or 0)
             est_c = str(alu.get("Estado_Cartera", "No cruzado"))
             alerta_code = "AL_DIA"
-            alerta_txt = "✅ Al Día"
+            alerta_txt = f"✅ PAZ Y SALVO (Pagó ${int(abonado_c):,})" if abonado_c > 0 else "✅ PAZ Y SALVO"
             if not alu.get("Cartera_Cruzada"):
                 alerta_code = "NO_CRUZADO"
                 alerta_txt = "Sin cruce en Excel actual"
             elif est_c == "RIESGO $0 REAL":
                 alerta_code = "RIESGO_CERO_REAL"
                 alerta_txt = f"🚨 ABONO $0 REAL (Debe ${int(saldo_c):,})"
-                cero_en_clase_cnt += 1
-                mora_en_clase_cnt += 1
+                if not alu.get("Curso_Completado"):
+                    cero_en_clase_cnt += 1
+                    mora_en_clase_cnt += 1
             elif "MORA CRÍTICA" in est_c:
                 alerta_code = "MORA_CRITICA_90"
                 alerta_txt = f"⏳ {est_c} (${int(saldo_c):,})"
-                mora_en_clase_cnt += 1
+                if not alu.get("Curso_Completado"):
+                    mora_en_clase_cnt += 1
             elif saldo_c > 0:
                 alerta_code = "CON_SALDO"
                 alerta_txt = f"⚠️ Saldo Pendiente (${int(saldo_c):,})"
-                mora_en_clase_cnt += 1
+                if not alu.get("Curso_Completado"):
+                    mora_en_clase_cnt += 1
 
             alumnos_web_list.append({
                 "cedula": str(alu.get("Documento", "")),
@@ -3469,6 +3500,7 @@ class SheetsService:
                 "alerta_cartera": alerta_code,
                 "alerta_texto": alerta_txt,
                 "saldo_cartera": saldo_c,
+                "abonado_cartera": abonado_c,
                 "convenio": str(alu.get("Convenio_Cartera", "-")),
             })
 

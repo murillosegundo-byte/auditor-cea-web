@@ -241,7 +241,22 @@ def _leer_hoja_xml(sheet_xml: bytes, shared_strings: List[str]) -> List[List[str
     return rows_out
 
 
-def _leer_filas_xlsx_nativo(file_bytes: bytes, prefer_keywords: Tuple[str, ...] = ("NUMEROMATRICULA", "MATRICULA", "VALORCURSO", "VALOR", "NUMERODOCUMENTO")) -> List[List[str]]:
+def _leer_filas_xlsx_nativo(
+    file_bytes: bytes,
+    prefer_keywords: Tuple[str, ...] = (
+        "NUMEROMATRICULA",
+        "MATRICULA",
+        "VALORCURSO",
+        "VALOR",
+        "NUMERODOCUMENTO",
+        "IDENTIFICACION",
+        "NOMBRETERCERO",
+        "COMPROBANTE",
+        "CODIGOCONTABLE",
+        "CREDITO",
+        "DEBITO",
+    ),
+) -> List[List[str]]:
     # Si no empieza con firma ZIP ('PK'), verificar si es HTML/XML exportado como .xls/.xlsx
     if not file_bytes.startswith(b"PK"):
         head_strip = file_bytes[:512].lstrip().lower()
@@ -325,10 +340,27 @@ def _extraer_bytes(origen: Any) -> Tuple[bytes, bool]:
 # =============================================================================
 # 1. CAPA DE INGESTIÓN: MATRÍCULAS + RECIBOS DE CAJA (OPCIONAL)
 # =============================================================================
+def _inferir_categoria_por_monto_contable(monto: float, codigo_contable: str = "", comprobante: str = "") -> str:
+    """Infiere la categoría o tipo de servicio a partir del valor facturado en contabilidad (Siigo FV-2 / NC-2)."""
+    comp_up = str(comprobante or "").upper()
+    if comp_up.startswith("NC") or str(codigo_contable).startswith("4175"):
+        return "DEVOLUCION_NC"
+    m = abs(monto)
+    if m <= 190000:
+        return "CERTIFICADO_ADICIONAL"
+    if 600000 <= m <= 990000:
+        return "A2"
+    if 990001 <= m <= 1480000:
+        return "B1"
+    if m > 1480000:
+        return "C1"
+    return "A2"
+
+
 def cargar_recibos_ingresos(origen_ingresos: Any) -> List[Dict[str, Any]]:
     """
-    Lee un archivo opcional de recibos de caja (`ingresos.xlsx` o `.csv`) con columnas como:
-    NUMERODOCUMENTO, NOMBRES, APELLIDOS, VALOR, FECHA, NUMEROMATRICULA, TIPOPAGO, OBSERVACION, ESTADO, RECIBO/ID.
+    Lee un archivo opcional de recibos de caja (`ingresos.xlsx` o `.csv`) O un Auxiliar Contable
+    (`Movimiento auxiliar de tercero por cuenta contable` con `FV-2-...` y `NC-2-...`).
     """
     if not origen_ingresos:
         return []
@@ -337,18 +369,24 @@ def cargar_recibos_ingresos(origen_ingresos: Any) -> List[Dict[str, Any]]:
 
     header_idx = -1
     headers: List[str] = []
+    es_auxiliar_contable = False
     for idx, fila in enumerate(filas):
         fila_norm = [_norm_header(c) for c in fila]
-        if any(k in fila_norm for k in ("VALOR", "ABONO", "MONTO", "TOTAL")) and any(
-            k in fila_norm for k in ("NUMERODOCUMENTO", "DOCUMENTO", "CEDULA", "NUMEROMATRICULA", "MATRICULA")
+        if any(k in fila_norm for k in ("CODIGOCONTABLE", "COMPROBANTE", "NOMBRETERCERO", "SALDOMOVIMIENTO")) and any(
+            k in fila_norm for k in ("CREDITO", "DEBITO", "IDENTIFICACION")
+        ):
+            header_idx = idx
+            headers = fila_norm
+            es_auxiliar_contable = True
+            break
+        if any(k in fila_norm for k in ("VALOR", "ABONO", "MONTO", "TOTAL", "CREDITO")) and any(
+            k in fila_norm for k in ("NUMERODOCUMENTO", "DOCUMENTO", "CEDULA", "NUMEROMATRICULA", "MATRICULA", "IDENTIFICACION")
         ) and not any(k in fila_norm for k in ("VALORCURSO", "VALORPENDIENTE", "CLASESCONTRATADAS")):
             header_idx = idx
             headers = fila_norm
             break
 
     if header_idx == -1:
-        # Si el usuario subió por error el mismo archivo de matrículas en la casilla de ingresos,
-        # devolver lista vacía para NO sobrescribir ni alterar los abonos del archivo de matrículas.
         return []
 
     recibos: List[Dict[str, Any]] = []
@@ -356,6 +394,40 @@ def cargar_recibos_ingresos(origen_ingresos: Any) -> List[Dict[str, Any]]:
         if not any(str(c).strip() for c in fila):
             continue
         raw = {headers[c_i]: (fila[c_i].strip() if c_i < len(fila) else "") for c_i in range(len(headers)) if headers[c_i]}
+
+        if es_auxiliar_contable:
+            doc = (raw.get("IDENTIFICACION") or raw.get("NUMERODOCUMENTO") or raw.get("DOCUMENTO") or "").strip()
+            tercero = (raw.get("NOMBRETERCERO") or raw.get("TERCERO") or "").strip()
+            comprobante = (raw.get("COMPROBANTE") or f"MOV-{i:04d}").strip()
+            cod_cta = (raw.get("CODIGOCONTABLE") or "").strip()
+            nom_cta = (raw.get("CUENTACONTABLE") or "Servicios").strip()
+            debito = _to_float(raw.get("DEBITO", 0))
+            credito = _to_float(raw.get("CREDITO", 0))
+            if not doc and not tercero and debito == 0 and credito == 0:
+                continue
+            if "PROCESADOEN" in _norm_header(doc):
+                continue
+            es_nc = comprobante.upper().startswith("NC") or cod_cta.startswith("4175") or (debito > 0 and credito == 0)
+            val_neto = -debito if es_nc else credito
+            fecha_dt = _parse_date(raw.get("FECHAELABORACION") or raw.get("FECHA") or "")
+            fecha_str = fecha_dt.strftime("%Y-%m-%d") if fecha_dt else str(raw.get("FECHAELABORACION", "")).strip()
+            recibos.append({
+                "RECIBO": comprobante,
+                "NUMERODOCUMENTO": doc,
+                "TERCERO": tercero,
+                "NUMEROMATRICULA": "",
+                "VALOR": val_neto,
+                "DEBITO": debito,
+                "CREDITO": credito,
+                "CODIGOCONTABLE": cod_cta,
+                "FECHA": fecha_str,
+                "TIPOPAGO": "NOTA CRÉDITO / DEVOLUCIÓN" if es_nc else f"FACTURA ELECTRÓNICA ({cod_cta})",
+                "OBSERVACION": f"{nom_cta} ({comprobante}) - {tercero}",
+                "ESTADO": "DEVOLUCION" if es_nc else "FACTURADO DIAN",
+                "HUERFANO": True,
+                "ES_CONTABLE": True,
+            })
+            continue
 
         estado = str(raw.get("ESTADO", "ACTIVO")).strip().upper()
         if estado in ("ANULADO", "ANULADA", "CANCELADO", "RECHAZADO"):
@@ -403,7 +475,10 @@ def cargar_y_limpiar_datos(
     tarifas_base: Optional[Dict[str, float]] = None,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """
-    Carga y normaliza el reporte de matrículas y lo cruza opcionalmente con recibos de ingresos.
+    Motor Flexible Multi-Formato:
+    1. Soporta Reporte Oficial de Matrículas / Convenios SISEC (`NUMEROMATRICULA`, `VALORCURSO`, `ABONOS`, etc.).
+    2. Soporta Movimiento Auxiliar Contable Siigo/DIAN (`Identificación`, `Nombre tercero`, `Código contable`, `Comprobante` FV-2/NC-2, `Débito`, `Crédito`, `Saldo Movimiento`).
+    3. Soporta cualquier otro archivo Excel/CSV administrativo o contable detectando dinámicamente sus columnas.
     """
     file_bytes, is_csv = _extraer_bytes(origen)
     filas = _leer_filas_csv(file_bytes) if is_csv else _leer_filas_xlsx_nativo(file_bytes)
@@ -411,15 +486,18 @@ def cargar_y_limpiar_datos(
 
     metadata: Dict[str, Any] = {
         "sede": "CEA AUTO ORIENTE",
+        "tipo_archivo_detectado": "MATRICULAS_SISEC",
         "fecha_inicial": "",
         "fecha_final": "",
         "registros_declarados": 0,
         "recibos_externos_cargados": 0,
         "recibos_huerfanos_cruzados": 0,
+        "contabilidad_resumen": None,
     }
 
     header_idx = -1
     headers: List[str] = []
+    es_auxiliar_contable = False
 
     alias_map = {
         "MATRICULA": "NUMEROMATRICULA",
@@ -427,18 +505,29 @@ def cargar_y_limpiar_datos(
         "NOMATRICULA": "NUMEROMATRICULA",
         "NUMMATRICULA": "NUMEROMATRICULA",
         "IDMATRICULA": "NUMEROMATRICULA",
+        "COMPROBANTE": "NUMEROMATRICULA",
+        "FACTURA": "NUMEROMATRICULA",
+        "CONSECUTIVO": "NUMEROMATRICULA",
         "DOCUMENTO": "NUMERODOCUMENTO",
         "CEDULA": "NUMERODOCUMENTO",
         "NRODOCUMENTO": "NUMERODOCUMENTO",
         "NODOCUMENTO": "NUMERODOCUMENTO",
         "IDENTIFICACION": "NUMERODOCUMENTO",
+        "NIT": "NUMERODOCUMENTO",
+        "TERCEROID": "NUMERODOCUMENTO",
         "NOMBRE": "NOMBRES",
+        "NOMBRETERCERO": "NOMBRES",
+        "TERCERO": "NOMBRES",
+        "RAZONSOCIAL": "NOMBRES",
+        "CLIENTE": "NOMBRES",
         "APELLIDO": "APELLIDOS",
-        "ALUMNO": "ALUMNO_COMPLETO",
-        "ESTUDIANTE": "ALUMNO_COMPLETO",
+        "ALUMNO": "NOMBRES",
+        "ESTUDIANTE": "NOMBRES",
         "VALOR": "VALORCURSO",
         "VALORTOTAL": "VALORCURSO",
         "PRECIO": "VALORCURSO",
+        "MONTO": "VALORCURSO",
+        "TOTAL": "VALORCURSO",
         "ABONO": "ABONOS",
         "TOTALABONADO": "ABONOS",
         "PAGADO": "ABONOS",
@@ -446,12 +535,21 @@ def cargar_y_limpiar_datos(
         "PENDIENTE": "VALORPENDIENTE",
         "SALDOPENDIENTE": "VALORPENDIENTE",
         "FECHAMATRICULA": "FECHAINSCRIPCION",
+        "FECHAELABORACION": "FECHAINSCRIPCION",
+        "FECHAFACTURA": "FECHAINSCRIPCION",
+        "FECHAMOVIMIENTO": "FECHAINSCRIPCION",
         "FECHA": "FECHAINSCRIPCION",
     }
 
     for idx, fila in enumerate(filas):
         fila_upper = [str(c).strip().upper() for c in fila]
         fila_norm = [_norm_header(c) for c in fila]
+        texto_fila = " ".join(c for c in fila_upper if c)
+        if "MOVIMIENTO AUXILIAR" in texto_fila or "CUENTA CONTABLE" in texto_fila:
+            metadata["sede"] = "CEA AUTO ORIENTE SAS (CONTABILIDAD 901517095-8)"
+        if "DE ENERO" in texto_fila or ("DE " in texto_fila and " A " in texto_fila and "202" in texto_fila):
+            metadata["fecha_inicial"] = texto_fila[:45]
+
         for i, cell in enumerate(fila_upper):
             if "SEDE:" in cell and i + 1 < len(fila):
                 metadata["sede"] = fila[i + 1].strip() or "CEA"
@@ -462,29 +560,170 @@ def cargar_y_limpiar_datos(
             elif "CANTIDAD DE REGISTROS:" in cell and i + 1 < len(fila):
                 metadata["registros_declarados"] = int(_to_float(fila[i + 1]))
 
-        tiene_mat = any(c in ("NUMEROMATRICULA", "MATRICULA", "NROMATRICULA", "NOMATRICULA") for c in fila_norm)
-        tiene_doc = any(c in ("NUMERODOCUMENTO", "DOCUMENTO", "CEDULA", "IDENTIFICACION") for c in fila_norm)
-        tiene_nom = any(c in ("NOMBRES", "NOMBRE", "ALUMNO", "ESTUDIANTE") for c in fila_norm)
+        # 1) Detectar Auxiliar Contable (Siigo / DIAN)
+        if any(c in ("CODIGOCONTABLE", "CUENTACONTABLE", "SALDOMOVIMIENTO") for c in fila_norm) and any(
+            c in ("IDENTIFICACION", "NOMBRETERCERO", "COMPROBANTE", "CREDITO", "DEBITO") for c in fila_norm
+        ):
+            header_idx = idx
+            headers = [alias_map.get(c, c) for c in fila_norm]
+            es_auxiliar_contable = True
+            metadata["tipo_archivo_detectado"] = "AUXILIAR_CONTABLE_SIIGO"
+            break
+
+        # 2) Detectar Matrículas / Convenios o tabla con Documento + Nombre
+        tiene_mat = any(c in ("NUMEROMATRICULA", "MATRICULA", "NROMATRICULA", "NOMATRICULA", "COMPROBANTE") for c in fila_norm)
+        tiene_doc = any(c in ("NUMERODOCUMENTO", "DOCUMENTO", "CEDULA", "IDENTIFICACION", "NIT") for c in fila_norm)
+        tiene_nom = any(c in ("NOMBRES", "NOMBRE", "ALUMNO", "ESTUDIANTE", "NOMBRETERCERO", "TERCERO", "CLIENTE", "RAZONSOCIAL") for c in fila_norm)
         if tiene_mat or (tiene_doc and tiene_nom):
             header_idx = idx
             headers = [alias_map.get(c, c) for c in fila_norm]
             break
 
+    # 3) Fallback Universal Flexible: si ningún encabezado estándar coincidió, tomar la primera fila con >= 3 columnas con texto
     if header_idx == -1:
-        muestra = []
-        for f in filas[:8]:
-            f_clean = [c for c in f if str(c).strip()]
-            if f_clean:
-                muestra.append(", ".join(f_clean[:6]))
-        detalle_cols = f" Filas detectadas: {' | '.join(muestra[:3])}" if muestra else " Archivo vacío o sin celdas legibles."
-        raise ValueError(f"No se encontró el encabezado 'NUMEROMATRICULA' en el archivo.{detalle_cols}")
+        for idx, fila in enumerate(filas[:35]):
+            non_empty = [c for c in fila if str(c).strip()]
+            if len(non_empty) >= 3:
+                header_idx = idx
+                headers = [alias_map.get(_norm_header(c), _norm_header(c) or f"COL_{i}") for i, c in enumerate(fila)]
+                metadata["tipo_archivo_detectado"] = "TABLA_FLEXIBLE_UNIVERSAL"
+                break
+
+    if header_idx == -1:
+        raise ValueError("El archivo subido está vacío o no contiene filas legibles.")
 
     if fecha_corte is None:
         dt_final = _parse_date(metadata.get("fecha_final"))
         fecha_corte = dt_final if dt_final else datetime.datetime.now()
 
     registros: List[Dict[str, Any]] = []
-    for fila in filas[header_idx + 1 :]:
+
+    if es_auxiliar_contable:
+        total_credito_4180 = 0.0
+        total_debito_4175 = 0.0
+        total_facturas_fv = 0
+        total_notas_nc = 0
+        fechas_vistas: List[str] = []
+
+        for idx_r, fila in enumerate(filas[header_idx + 1 :], start=1):
+            if not any(str(c).strip() for c in fila):
+                continue
+            raw = {}
+            for c_i, col_name in enumerate(headers):
+                if not col_name:
+                    continue
+                raw[col_name] = fila[c_i].strip() if c_i < len(fila) else ""
+
+            num_doc = str(raw.get("NUMERODOCUMENTO", "")).strip()
+            nombres = str(raw.get("NOMBRES", "")).strip()
+            comprobante = str(raw.get("NUMEROMATRICULA", "")).strip()
+            if not num_doc and not nombres:
+                continue
+            if "PROCESADO" in num_doc.upper() or "MOVIMIENTO" in num_doc.upper():
+                continue
+
+            cod_contable = str(raw.get("CODIGOCONTABLE", "41800101")).strip()
+            cta_contable = str(raw.get("CUENTACONTABLE", "Servicios")).strip()
+            debito = _to_float(raw.get("DEBITO", 0))
+            credito = _to_float(raw.get("CREDITO", 0))
+            saldo_mov = _to_float(raw.get("SALDOMOVIMIENTO", 0))
+
+            es_nc = comprobante.upper().startswith("NC") or cod_contable.startswith("4175") or (debito > 0 and credito == 0)
+            if es_nc:
+                total_debito_4175 += debito
+                total_notas_nc += 1
+            else:
+                total_credito_4180 += credito
+                total_facturas_fv += 1
+
+            cat_inf = _inferir_categoria_por_monto_contable(credito if not es_nc else debito, cod_contable, comprobante)
+            tarifa_estandar = tarifas.get(cat_inf, credito if credito > 0 else debito)
+
+            # En Auxiliar Contable:
+            # - Para Factura FV-2 (41800101): Crédito es lo facturado y pagado/causado.
+            # - Para Nota Crédito NC-2 (41750502): Débito es devolución en servicios.
+            if es_nc:
+                valor_curso = debito
+                abonos = 0.0
+                valor_pendiente = debito
+                convenio_norm = f"DEVOLUCIÓN NC ({cod_contable})"
+            else:
+                valor_curso = credito
+                abonos = credito
+                valor_pendiente = 0.0
+                convenio_norm = f"FACTURACIÓN DIAN ({cod_contable})"
+
+            fecha_insc_dt = _parse_date(raw.get("FECHAINSCRIPCION", ""))
+            fecha_insc_str = fecha_insc_dt.strftime("%Y-%m-%d") if fecha_insc_dt else ""
+            if fecha_insc_str:
+                fechas_vistas.append(fecha_insc_str)
+            mes_inscripcion = fecha_insc_dt.strftime("%Y-%m") if fecha_insc_dt else "SIN_FECHA"
+            dias_antiguedad = max(0, (fecha_corte - fecha_insc_dt).days) if fecha_insc_dt else 0
+
+            reg = {
+                "NUMEROMATRICULA": comprobante or f"MOV-{idx_r:04d}",
+                "NUMERODOCUMENTO": num_doc,
+                "TIPODOCUMENTO": "CC/NIT",
+                "NOMBRES": nombres,
+                "APELLIDOS": "",
+                "ALUMNO": nombres,
+                "CONVENIO": cta_contable.upper(),
+                "CONVENIO_NORM": convenio_norm,
+                "CONVENIO_VACIO": False,
+                "PUBLICIDAD": cod_contable,
+                "CATEGORIA": cat_inf,
+                "FECHAINSCRIPCION": fecha_insc_str,
+                "FECHAINSCRIPCION_RAW": str(raw.get("FECHAINSCRIPCION", "")).strip(),
+                "MES_INSCRIPCION": mes_inscripcion,
+                "VALORHORA": 0.0,
+                "CLASESCONTRATADAS": 0,
+                "CLASESRECIBIDAS": 0,
+                "CLASESPENDIENTES": 0,
+                "VALORCURSO": valor_curso,
+                "TARIFA_BASE_CAT": tarifa_estandar,
+                "ABONOS_ORIGINAL": abonos,
+                "ABONOS": abonos,
+                "VALORPENDIENTE_ORIGINAL": valor_pendiente,
+                "VALORPENDIENTE": valor_pendiente,
+                "SALDO_CALCULADO": valor_curso - abonos,
+                "ERROR_CUADRE": 0.0,
+                "DIAS_ANTIGUEDAD": dias_antiguedad,
+                "ESTADO": "NOTA_CREDITO" if es_nc else "FACTURADO_DIAN",
+                "FECHAEXAMENMEDICO": "",
+                "CODIGOCONTABLE": cod_contable,
+                "DEBITO": debito,
+                "CREDITO": credito,
+                "SALDO_MOVIMIENTO_CONTABLE": saldo_mov,
+                "RECIBOS_CAJA": [{
+                    "RECIBO": comprobante,
+                    "NUMERODOCUMENTO": num_doc,
+                    "NUMEROMATRICULA": comprobante,
+                    "VALOR": -debito if es_nc else credito,
+                    "FECHA": fecha_insc_str,
+                    "TIPOPAGO": f"{cod_contable} - {cta_contable}",
+                    "OBSERVACION": f"{'Devolución Nota Crédito' if es_nc else 'Factura Electrónica de Venta'} ({comprobante})",
+                    "ESTADO": "DEVOLUCIÓN NC" if es_nc else "CONTABILIZADO",
+                    "HUERFANO": False,
+                }],
+            }
+            registros.append(reg)
+
+        if fechas_vistas:
+            metadata["fecha_inicial"] = min(fechas_vistas)
+            metadata["fecha_final"] = max(fechas_vistas)
+        metadata["contabilidad_resumen"] = {
+            "es_contabilidad": True,
+            "total_credito_servicios_4180": round(total_credito_4180, 2),
+            "total_debito_devoluciones_4175": round(total_debito_4175, 2),
+            "ingreso_neto_contable": round(total_credito_4180 - total_debito_4175, 2),
+            "total_facturas_fv": total_facturas_fv,
+            "total_notas_credito_nc": total_notas_nc,
+        }
+        metadata["fecha_corte_usada"] = fecha_corte.strftime("%Y-%m-%d")
+        metadata["total_procesados"] = len(registros)
+        return registros, metadata
+
+    for idx_r, fila in enumerate(filas[header_idx + 1 :], start=1):
         if not any(str(c).strip() for c in fila):
             continue
         raw = {}
@@ -497,15 +736,36 @@ def cargar_y_limpiar_datos(
         nombres = str(raw.get("NOMBRES", "")).strip()
         apellidos = str(raw.get("APELLIDOS", "")).strip()
         num_doc = str(raw.get("NUMERODOCUMENTO", "")).strip()
+
+        # Fallback flexible si la tabla tiene columnas con otros nombres
+        if not num_doc:
+            for k_col, v_col in raw.items():
+                if any(w in k_col for w in ("DOC", "CED", "IDENT", "NIT", "CC")) and v_col:
+                    num_doc = v_col
+                    break
+        if not nombres:
+            for k_col, v_col in raw.items():
+                if any(w in k_col for w in ("NOM", "TERCERO", "CLIEN", "ALUM", "ESTUD", "DESCRIP")) and v_col:
+                    nombres = v_col
+                    break
+        if not num_mat and (num_doc or nombres):
+            num_mat = f"REG-{idx_r:04d}"
+
         if not num_mat and not nombres and not num_doc:
             continue
 
-        categoria = str(raw.get("CATEGORIA", "")).strip().upper() or "SIN CATEGORÍA"
-        valor_curso_raw = _to_float(raw.get("VALORCURSO", 0))
-        tarifa_estandar = tarifas.get(categoria, 1000000.0)
-        valor_curso = valor_curso_raw if valor_curso_raw > 0 else tarifa_estandar
+        categoria = str(raw.get("CATEGORIA", "")).strip().upper() or "GENERAL"
+        valor_curso_raw = _to_float(
+            raw.get("VALORCURSO")
+            or raw.get("CREDITO")
+            or raw.get("DEBITO")
+            or raw.get("SALDOMOVIMIENTO")
+            or 0
+        )
+        tarifa_estandar = tarifas.get(categoria, abs(valor_curso_raw) if valor_curso_raw != 0 else 1000000.0)
+        valor_curso = abs(valor_curso_raw) if valor_curso_raw != 0 else tarifa_estandar
 
-        abonos = _to_float(raw.get("ABONOS", 0))
+        abonos = _to_float(raw.get("ABONOS", raw.get("CREDITO", 0)))
         valor_pendiente = _to_float(raw.get("VALORPENDIENTE", 0))
         valor_hora = _to_float(raw.get("VALORHORA", 0))
         clases_contratadas = int(_to_float(raw.get("CLASESCONTRATADAS", 0)))
