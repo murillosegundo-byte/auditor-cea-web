@@ -24,6 +24,7 @@ import re
 import secrets
 import threading
 import time
+import urllib.parse
 import urllib.request
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -33,6 +34,7 @@ from typing import Any, Dict, Optional, Tuple
 from dotenv import load_dotenv
 
 import auditor_cea
+import clases_core
 
 
 def _parse_multipart_binary(content_type: str, raw_body: bytes) -> Dict[str, Tuple[Optional[str], bytes]]:
@@ -583,6 +585,64 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
     .status-toast { margin-top: 10px; padding: 9px 13px; border-radius: 8px; font-size: 12.5px; display: none; }
     .status-toast.ok { display: block; background: rgba(16,185,129,0.15); border: 1px solid #059669; color: #6ee7b7; }
     .status-toast.err { display: block; background: rgba(239,68,68,0.15); border: 1px solid #dc2626; color: #fca5a5; }
+
+    /* Barra de Navegación Maestra de 5 Módulos */
+    .mod-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+      background: #0f172a;
+      border: 1px solid #2b3d63;
+      padding: 10px;
+      border-radius: 14px;
+    }
+    .mod-btn {
+      flex: 1 1 200px;
+      background: #162238;
+      color: #cbd5e1;
+      border: 1px solid #2b3d63;
+      padding: 11px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      transition: all 0.15s;
+    }
+    .mod-btn:hover { background: #223556; color: #fff; }
+    .mod-btn.active {
+      background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+      border-color: #60a5fa;
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.38);
+    }
+    .mod-section { display: none; }
+    .mod-section.active { display: block; }
+    .form-grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+    .progress-bar-wrap {
+      width: 110px;
+      background: #0f172a;
+      border: 1px solid #2b3d63;
+      border-radius: 999px;
+      height: 10px;
+      overflow: hidden;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+    }
   </style>
 </head>
 <body>
@@ -591,19 +651,73 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
     <div class="brand">
       <div class="brand-badge">CEA</div>
       <div>
-        <h1>Sistema de Auditoría Contable y Control de Cartera — Sede CEA</h1>
-        <p id="headerMeta">CEA Auto Oriente • Cargando motor de consolidación por Cédula...</p>
+        <h1>Plataforma Central CEA Auto Oriente — Cartera + Bot de Clases + PESV</h1>
+        <p id="headerMeta">CEA Auto Oriente • Cargando motor de consolidación por Cédula y sincronización con Google Sheets...</p>
       </div>
     </div>
     <div class="header-actions">
+      <button type="button" class="btn btn-outline" id="btnSheetsStatus" onclick="toggleSheetsDrawer()">🔑 Google Sheets</button>
       <button type="button" class="btn btn-outline" onclick="toggleTarifas()">⚙️ Tarifas por Categoría</button>
-      <a href="/api/download/excel" class="btn btn-success">📊 Descargar Excel Multi-Pestaña (.xlsx)</a>
-      <a href="/api/download/pdf" class="btn btn-danger">📄 Descargar PDF Ejecutivo</a>
+      <a href="/api/download/excel" class="btn btn-success">📊 Excel Cartera (.xlsx)</a>
+      <a href="/api/download/pdf" class="btn btn-danger">📄 PDF Ejecutivo Cartera</a>
       <a href="/logout" class="btn btn-outline" title="Cerrar sesión segura">🔒 Salir</a>
     </div>
   </header>
 
   <div class="container">
+    <!-- Panel desplegable para conectar Google Sheets en vivo -->
+    <div id="sheetsDrawer" class="tarifas-drawer">
+      <div class="panel-title">
+        <span>🔑 Conexión en Tiempo Real con Google Sheets del Bot (`1xouy9DMkp4oZffZVx9E1y2IwY5qxRi5u2yr3p5wpj6U`)</span>
+        <span id="sheetsStatusLabel" class="badge badge-info">Verificando conexión...</span>
+      </div>
+      <p style="font-size:12.5px; color:#cbd5e1; margin-bottom:10px;">
+        El Dashboard y el Bot de Telegram comparten las mismas hojas de Google Sheets (<b>Alumnos</b>, <b>Instructores</b>, <b>Registro_Clases</b>, <b>Inasistencias</b>, <b>Mantenimientos</b>, <b>Vehiculos_PESV</b> y <b>Cierres_Jornada</b>). Si estás en Render y aún no has cargado <code>credentials.json</code>, súbelo o pégalo aquí con 1 clic:
+      </p>
+      <div class="form-grid-4">
+        <div style="grid-column: span 2;">
+          <label class="field-label">📂 Seleccionar archivo credentials.json de Google Service Account</label>
+          <input type="file" id="credFileInput" accept=".json" onchange="leerArchivoCredenciales(this)" />
+        </div>
+        <div style="grid-column: span 2;">
+          <label class="field-label">📋 O pegar contenido JSON de credentials.json</label>
+          <input type="text" id="credJsonInput" placeholder='{"type": "service_account", "project_id": "..."}' />
+        </div>
+        <div>
+          <button type="button" class="btn btn-primary" style="width:100%; justify-content:center;" onclick="conectarGoogleSheets()">🔌 Conectar Sheets Ahora</button>
+        </div>
+      </div>
+      <div id="sheetsToast" class="status-toast"></div>
+    </div>
+
+    <!-- Barra de Navegación de los 5 Módulos Integrados -->
+    <div class="mod-nav">
+      <button type="button" class="mod-btn active" onclick="cambiarModulo('mod_cartera', this)">
+        <span>💰 1. Auditoría de Cartera y Convenios</span>
+        <span class="badge" id="nav_badge_cartera">Multi-Curso</span>
+      </button>
+      <button type="button" class="mod-btn" onclick="cambiarModulo('mod_clases', this)">
+        <span>🎓 2. Seguimiento Clases y Alumnos</span>
+        <span class="badge badge-info" id="nav_badge_clases">F-59 a F-62</span>
+      </button>
+      <button type="button" class="mod-btn" onclick="cambiarModulo('mod_nomina', this)">
+        <span>👨‍🏫 3. Nómina y Horarios Instructores</span>
+        <span class="badge badge-purple" id="nav_badge_nomina">Liquidación</span>
+      </button>
+      <button type="button" class="mod-btn" onclick="cambiarModulo('mod_inasistencias', this)">
+        <span>🚫 4. Control de Inasistencias</span>
+        <span class="badge badge-warning" id="nav_badge_inas">153+</span>
+      </button>
+      <button type="button" class="mod-btn" onclick="cambiarModulo('mod_pesv', this)">
+        <span>🔧 5. Mantenimientos y Flota PESV</span>
+        <span class="badge badge-success" id="nav_badge_pesv">SISI-F2-08</span>
+      </button>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- MÓDULO 1: AUDITORÍA CONTABLE Y CONTROL DE CARTERA                       -->
+    <!-- ======================================================================= -->
+    <div id="mod_cartera" class="mod-section active">
     <!-- Panel desplegable de Parametrización de Tarifas -->
     <div id="tarifasDrawer" class="tarifas-drawer">
       <div class="panel-title">
@@ -733,11 +847,472 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
         </table>
       </div>
     </div>
+    </div> <!-- Fin mod_cartera -->
+
+    <!-- ======================================================================= -->
+    <!-- MÓDULO 2: SEGUIMIENTO DE CLASES PRÁCTICAS Y ALUMNOS (F-59 a F-62)       -->
+    <!-- ======================================================================= -->
+    <div id="mod_clases" class="mod-section">
+      <div class="kpi-grid" id="kpiClasesGrid"></div>
+
+      <div class="control-bar">
+        <div class="panel">
+          <div class="panel-title">
+            <span>➕ Registrar o Actualizar Alumno en Google Sheets (Sincronizado con el Bot)</span>
+            <span class="badge badge-info">Hoja: Alumnos</span>
+          </div>
+          <div class="form-grid-4">
+            <div>
+              <label class="field-label">Cédula / Documento *</label>
+              <input type="text" id="al_cedula" placeholder="Ej: 1094950123" />
+            </div>
+            <div>
+              <label class="field-label">Nombre Completo del Alumno *</label>
+              <input type="text" id="al_nombre" placeholder="Ej: JUAN PEREZ GOMEZ" />
+            </div>
+            <div>
+              <label class="field-label">Categoría *</label>
+              <select id="al_cat">
+                <option value="A2">🏍️ A2 Moto (15 clases - F-60)</option>
+                <option value="B1">🚗 B1 Carro Particular (20 clases - F-61)</option>
+                <option value="C1">🚕 C1 Servicio Público (30 clases - F-62)</option>
+                <option value="RECAT_C1">🔄 Recategorización C1 (10 clases - F-62)</option>
+                <option value="A1">🏍️ A1 Moto (8 clases - F-59)</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Teléfono / Celular</label>
+              <input type="text" id="al_tel" placeholder="Ej: 3101234567" />
+            </div>
+            <div>
+              <button type="button" class="btn btn-primary" style="width:100%; justify-content:center;" onclick="registrarAlumnoWeb()">💾 Guardar Alumno</button>
+            </div>
+          </div>
+          <div id="alumnoToast" class="status-toast"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">
+            <span>📝 Registrar Clase Práctica Manualmente</span>
+            <span class="badge badge-success">Hoja: Registro_Clases</span>
+          </div>
+          <div class="form-grid-4">
+            <div>
+              <label class="field-label">Cédula Alumno *</label>
+              <input type="text" id="cl_cedula" placeholder="Cédula" />
+            </div>
+            <div>
+              <label class="field-label">Nombre Alumno *</label>
+              <input type="text" id="cl_alumno" placeholder="Nombre Alumno" />
+            </div>
+            <div>
+              <label class="field-label">Categoría</label>
+              <select id="cl_cat">
+                <option value="A2">A2</option>
+                <option value="B1">B1</option>
+                <option value="C1">C1</option>
+                <option value="RECAT_C1">RECAT_C1</option>
+                <option value="A1">A1</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Instructor *</label>
+              <input type="text" id="cl_instructor" placeholder="Nombre Instructor" />
+            </div>
+            <div>
+              <label class="field-label">Clases Dictadas (Ej: 1, 2)</label>
+              <input type="text" id="cl_nums" value="1, 2" />
+            </div>
+            <div>
+              <button type="button" class="btn btn-success" style="width:100%; justify-content:center;" onclick="registrarClaseWeb()">✅ Registrar Clase</button>
+            </div>
+          </div>
+          <div id="claseToast" class="status-toast"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <span>🎓 Listado de Alumnos en Clases Prácticas + Cruce en Vivo con Cartera + Descarga PDF Oficial (F-59 a F-62)</span>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <select id="filtroCatClases" onchange="renderizarModuloClases()" style="width:auto;">
+              <option value="TODAS">Todas las Categorías</option>
+              <option value="A1">A1 (F-59)</option>
+              <option value="A2">A2 (F-60)</option>
+              <option value="B1">B1 (F-61)</option>
+              <option value="C1">C1 (F-62)</option>
+              <option value="RECAT_C1">RECAT_C1 (F-62)</option>
+            </select>
+            <select id="filtroAlertaCartera" onchange="renderizarModuloClases()" style="width:auto;">
+              <option value="TODOS">Todos los Alumnos</option>
+              <option value="CON_SALDO">⚠️ Alumnos en Clase con Saldo Pendiente</option>
+              <option value="CERO_REAL">🚨 Alumnos en Clase con Abono $0 (Bloquear)</option>
+              <option value="FINALIZADOS">✅ Curso Práctico Finalizado</option>
+            </select>
+            <button type="button" class="btn btn-outline" onclick="cargarBotOverview()">🔄 Sincronizar con Bot</button>
+          </div>
+        </div>
+
+        <div class="table-toolbar">
+          <input type="text" id="searchClasesInput" placeholder="🔎 Buscar alumno por nombre, cédula o categoría..." oninput="renderizarModuloClases()" style="max-width: 440px;" />
+          <span id="clasesCountInfo" style="font-size:12.5px; color:var(--muted);">Haz clic en 📄 F-59/F-62 para descargar la ficha oficial con fotos y firmas</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Cédula</th>
+                <th>Alumno</th>
+                <th>Categoría</th>
+                <th>Formato Oficial</th>
+                <th>Avance Clases Prácticas</th>
+                <th>Estado Curso</th>
+                <th>Cruce Contable Cartera</th>
+                <th>Saldo Real Cédula</th>
+                <th>Acción / PDF Oficial</th>
+              </tr>
+            </thead>
+            <tbody id="clasesTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- MÓDULO 3: LIQUIDACIÓN / NÓMINA Y HORARIOS DE INSTRUCTORES               -->
+    <!-- ======================================================================= -->
+    <div id="mod_nomina" class="mod-section">
+      <div class="kpi-grid" id="kpiNominaGrid"></div>
+
+      <div class="panel" style="margin-bottom:18px;">
+        <div class="panel-title">
+          <span>👨‍🏫 Filtros de Liquidación de Instructores y Validación de Horario de Envío (Min 18-28 / Min 40-50)</span>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <select id="nom_periodo" onchange="cargarBotOverview()" style="width:auto;">
+              <option value="mes">📅 Este Mes</option>
+              <option value="dia">📅 Hoy</option>
+              <option value="ayer">📅 Ayer</option>
+              <option value="semana">📅 Esta Semana</option>
+              <option value="semana_ant">📅 Semana Anterior</option>
+              <option value="mes_ant">📅 Mes Anterior</option>
+              <option value="anio">📅 Este Año</option>
+              <option value="todo">📚 Todo el Histórico</option>
+            </select>
+            <select id="nom_instructor" onchange="cargarBotOverview()" style="width:auto;">
+              <option value="TODOS">👥 Todos los Instructores</option>
+            </select>
+            <button type="button" class="btn btn-danger" onclick="descargarPdfNomina()">📄 Descargar PDF Oficial de Nómina / Liquidación</button>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="max-height:290px; margin-bottom:16px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Instructor</th>
+                <th>Sesiones Registradas</th>
+                <th>Total Clases (Horas)</th>
+                <th>✅ A Tiempo (En Horario)</th>
+                <th>⚠️ Fuera de Horario</th>
+                <th>Desglose por Categoría</th>
+                <th>Acción PDF Individual</th>
+              </tr>
+            </thead>
+            <tbody id="nominaResumenTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="panel-title" style="margin-top:10px;">
+          <span>📋 Detalle de Clases Dictadas y Validación de Minuto de Envío</span>
+          <input type="text" id="searchNominaInput" placeholder="🔎 Filtrar por instructor, alumno, categoría o validación..." oninput="renderizarModuloNomina()" style="max-width: 360px;" />
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Hora Envío</th>
+                <th>Instructor</th>
+                <th>Cédula Alumno</th>
+                <th>Alumno</th>
+                <th>Cat.</th>
+                <th>Clases Marcadas</th>
+                <th>N° Horas</th>
+                <th>Validación Horario</th>
+                <th>Detalle Minuto</th>
+              </tr>
+            </thead>
+            <tbody id="nominaDetalleTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <span>📸 Cierres de Jornada Diarios (Foto de Agenda / Programación Enviada al Bot)</span>
+          <span class="badge badge-purple" id="cntCierresBadge">0 cierres</span>
+        </div>
+        <div class="table-wrap" style="max-height:260px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Instructor</th>
+                <th>Estado Cierre</th>
+                <th>Evidencia / Enlace Drive</th>
+              </tr>
+            </thead>
+            <tbody id="cierresTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- MÓDULO 4: CONTROL DE INASISTENCIAS Y RECAUDO DE MULTAS                  -->
+    <!-- ======================================================================= -->
+    <div id="mod_inasistencias" class="mod-section">
+      <div class="kpi-grid" id="kpiInasGrid"></div>
+
+      <div class="panel" style="margin-bottom:18px;">
+        <div class="panel-title">
+          <span>➕ Registrar Nueva Inasistencia de Alumno (Sincronizado con Google Sheets y Bot)</span>
+          <span class="badge badge-warning">Hoja: Inasistencias</span>
+        </div>
+        <div class="form-grid-4">
+          <div>
+            <label class="field-label">Fecha Programada *</label>
+            <input type="text" id="in_fecha" placeholder="DD/MM/YYYY" />
+          </div>
+          <div>
+            <label class="field-label">Nombre Completo del Alumno *</label>
+            <input type="text" id="in_alumno" placeholder="Nombre y Apellidos" />
+          </div>
+          <div>
+            <label class="field-label">Categoría *</label>
+            <select id="in_cat">
+              <option value="B1">🚗 B1 Carro</option>
+              <option value="C1">🚕 C1 Público</option>
+              <option value="A2">🏍️ A2 Moto</option>
+              <option value="A1">🏍️ A1 Moto</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Hora de Clase *</label>
+            <input type="text" id="in_hora" placeholder="Ej: 6:00 a 8:00 AM" />
+          </div>
+          <div>
+            <label class="field-label">Instructor Asignado *</label>
+            <input type="text" id="in_instructor" placeholder="Ej: ALDEMAR / HECTOR" />
+          </div>
+          <div>
+            <label class="field-label">Estado de Pago *</label>
+            <select id="in_estado">
+              <option value="Pendiente Pago">⏳ Pendiente Pago</option>
+              <option value="Cancelo Efectivo">💵 Cancelo Efectivo</option>
+              <option value="Cancelo Trasferencia">🏦 Cancelo Trasferencia</option>
+            </select>
+          </div>
+          <div>
+            <button type="button" class="btn btn-primary" style="width:100%; justify-content:center;" onclick="registrarInasistenciaWeb()">💾 Registrar Inasistencia</button>
+          </div>
+        </div>
+        <div id="inasToast" class="status-toast"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <span>🚫 Historial Oficial de Inasistencias y Control de Pagos</span>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <select id="inas_periodo" onchange="cargarBotOverview()" style="width:auto;">
+              <option value="todo">📚 Todo el Histórico</option>
+              <option value="mes">📅 Este Mes</option>
+              <option value="semana">📅 Esta Semana</option>
+              <option value="dia">📅 Hoy</option>
+              <option value="ayer">📅 Ayer</option>
+              <option value="mes_ant">📅 Mes Anterior</option>
+              <option value="anio">📅 Este Año</option>
+            </select>
+            <select id="inas_estado_filtro" onchange="cargarBotOverview()" style="width:auto;">
+              <option value="TODOS">Todos los Estados</option>
+              <option value="PENDIENTE">⏳ Solo Pendiente Pago</option>
+              <option value="PAGADO">✅ Solo Pagadas (Efectivo / Transf.)</option>
+            </select>
+            <button type="button" class="btn btn-danger" onclick="descargarPdfInasistenciasGeneral()">📄 Descargar PDF Consolidado Inasistencias</button>
+          </div>
+        </div>
+
+        <div class="table-toolbar">
+          <input type="text" id="searchInasInput" placeholder="🔎 Buscar inasistencia por alumno, instructor, fecha o estado..." oninput="renderizarModuloInasistencias()" style="max-width: 440px;" />
+          <span id="inasCountInfo" style="font-size:12.5px; color:var(--muted);">Haz clic en 💵 Efectivo / 🏦 Transf. para actualizar el pago en vivo</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Fecha</th>
+                <th>Alumno</th>
+                <th>Cat.</th>
+                <th>Horario</th>
+                <th>Instructor</th>
+                <th>Estado de Pago</th>
+                <th>Actualizar Pago (1 Clic)</th>
+                <th>PDF Individual</th>
+              </tr>
+            </thead>
+            <tbody id="inasTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- MÓDULO 5: MANTENIMIENTOS Y FLOTA VEHICULAR PESV (FORMATO SISI-F2-08)    -->
+    <!-- ======================================================================= -->
+    <div id="mod_pesv" class="mod-section">
+      <div class="kpi-grid" id="kpiPesvGrid"></div>
+
+      <div class="control-bar">
+        <div class="panel">
+          <div class="panel-title">
+            <span>🔧 Registrar Nuevo Mantenimiento Vehicular (Formato Oficial SISI-F2-08)</span>
+            <span class="badge badge-success">Hoja: Mantenimientos</span>
+          </div>
+          <div class="form-grid-4">
+            <div>
+              <label class="field-label">Placa del Vehículo *</label>
+              <select id="mt_placa"></select>
+            </div>
+            <div>
+              <label class="field-label">Tipo Mantenimiento *</label>
+              <select id="mt_tipo">
+                <option value="PREVENTIVO">🟢 PREVENTIVO</option>
+                <option value="CORRECTIVO">🟠 CORRECTIVO</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Kilometraje Actual *</label>
+              <input type="text" id="mt_km" placeholder="Ej: 161500" />
+            </div>
+            <div>
+              <label class="field-label">Taller / Proveedor *</label>
+              <input type="text" id="mt_taller" placeholder="Ej: TALLER / MONTALLANTAS" />
+            </div>
+            <div>
+              <label class="field-label">Mecánico / Técnico *</label>
+              <input type="text" id="mt_mecanico" placeholder="Ej: HECTOR / JAIRO" />
+            </div>
+            <div style="grid-column: span 2;">
+              <label class="field-label">Actividad Realizada / Repuestos *</label>
+              <input type="text" id="mt_actividad" placeholder="Ej: CAMBIO DE ACEITE Y FILTROS / REVISION FRENOS" />
+            </div>
+            <div>
+              <button type="button" class="btn btn-primary" style="width:100%; justify-content:center;" onclick="registrarMantenimientoWeb()">💾 Guardar Mantenimiento</button>
+            </div>
+          </div>
+          <div id="mtToast" class="status-toast"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">
+            <span>🚘 Gestión de Flota Activa PESV</span>
+            <span class="badge badge-info">Hoja: Vehiculos_PESV</span>
+          </div>
+          <div class="form-grid-4" style="margin-bottom:10px;">
+            <div>
+              <label class="field-label">Placa *</label>
+              <input type="text" id="vh_placa" placeholder="Ej: ABC123" />
+            </div>
+            <div>
+              <label class="field-label">Tipo (CARRO / MOTO)</label>
+              <select id="vh_tipo">
+                <option value="CARRO">🚗 CARRO</option>
+                <option value="MOTO">🏍️ MOTO</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Cat. (B1/C1/A2)</label>
+              <input type="text" id="vh_cat" value="B1" />
+            </div>
+            <div>
+              <label class="field-label">Marca / Línea</label>
+              <input type="text" id="vh_marca" placeholder="RENAULT / AKT" />
+            </div>
+          </div>
+          <button type="button" class="btn btn-success" style="width:100%; justify-content:center;" onclick="agregarVehiculoWeb()">➕ Agregar / Reactivar Vehículo en Flota</button>
+          <div id="vhToast" class="status-toast"></div>
+          <div id="flotaChipsWrap" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <span>📋 Bitácora Oficial de Mantenimientos Preventivos y Correctivos (SISI-F2-08 Firmado)</span>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <select id="pesv_periodo" onchange="cargarBotOverview()" style="width:auto;">
+              <option value="todo">📚 Todo el Histórico (2026)</option>
+              <option value="mes">📅 Este Mes</option>
+              <option value="mes_ant">📅 Mes Anterior</option>
+              <option value="semana">📅 Esta Semana</option>
+              <option value="anio">📅 Este Año</option>
+              <option value="mes_01">Enero 2026</option>
+              <option value="mes_02">Febrero 2026</option>
+              <option value="mes_03">Marzo 2026</option>
+              <option value="mes_04">Abril 2026</option>
+              <option value="mes_05">Mayo 2026</option>
+              <option value="mes_06">Junio 2026</option>
+              <option value="mes_07">Julio 2026</option>
+              <option value="mes_08">Agosto 2026</option>
+              <option value="mes_09">Septiembre 2026</option>
+              <option value="mes_10">Octubre 2026</option>
+              <option value="mes_11">Noviembre 2026</option>
+              <option value="mes_12">Diciembre 2026</option>
+            </select>
+            <select id="pesv_placa_filtro" onchange="cargarBotOverview()" style="width:auto;">
+              <option value="TODAS">🚘 Todas las Placas</option>
+            </select>
+            <button type="button" class="btn btn-danger" onclick="descargarPdfPesv()">📄 Descargar Formato Oficial SISI-F2-08 (Con Firmas)</button>
+          </div>
+        </div>
+
+        <div class="table-toolbar">
+          <input type="text" id="searchPesvInput" placeholder="🔎 Filtrar por placa, taller, mecánico, actividad o tipo..." oninput="renderizarModuloPesv()" style="max-width: 440px;" />
+          <span id="pesvCountInfo" style="font-size:12.5px; color:var(--muted);">Firmado digitalmente por SEGUNDO MURILLO (Rep. Legal) y MARLY ALFONSO (Líder PESV)</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Fecha</th>
+                <th>Placa</th>
+                <th>Tipo Vehículo</th>
+                <th>Tipo Mantenimiento</th>
+                <th>Kilometraje</th>
+                <th>Actividad Realizada / Intervención</th>
+                <th>Taller / Proveedor</th>
+                <th>Mecánico</th>
+                <th>PDF Placa</th>
+              </tr>
+            </thead>
+            <tbody id="pesvTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script>
     let AUDIT_DATA = null;
+    let BOT_DATA = null;
     let ACTIVE_TAB = 'jt_cartera';
+    let ACTIVE_MODULE = 'mod_cartera';
     let chartMensualInstance = null;
     let chartCarteraInstance = null;
 
@@ -1254,7 +1829,579 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
       }
     }
 
+    // =========================================================================
+    // NAVEGACIÓN ENTRE LOS 5 MÓDULOS Y SINCRONIZACIÓN CON EL BOT / SHEETS
+    // =========================================================================
+    function cambiarModulo(modId, btnEl) {
+      ACTIVE_MODULE = modId;
+      document.querySelectorAll('.mod-section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
+      const target = document.getElementById(modId);
+      if (target) target.classList.add('active');
+      if (btnEl) btnEl.classList.add('active');
+      if (modId !== 'mod_cartera' && !BOT_DATA) {
+        cargarBotOverview();
+      }
+    }
+
+    function toggleSheetsDrawer() {
+      document.getElementById('sheetsDrawer').classList.toggle('open');
+    }
+
+    function leerArchivoCredenciales(inputEl) {
+      if (!inputEl.files || !inputEl.files.length) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        document.getElementById('credJsonInput').value = ev.target.result || '';
+      };
+      reader.readAsText(inputEl.files[0]);
+    }
+
+    async function conectarGoogleSheets() {
+      const rawJson = document.getElementById('credJsonInput').value.trim();
+      const toast = document.getElementById('sheetsToast');
+      if (!rawJson) {
+        toast.className = 'status-toast err';
+        toast.textContent = '⚠️ Selecciona el archivo credentials.json o pega su contenido JSON.';
+        return;
+      }
+      toast.className = 'status-toast ok';
+      toast.textContent = '⏳ Conectando con Google Sheets del Bot...';
+      try {
+        const res = await fetch('/api/bot/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'conectar_sheets', credentials_json: rawJson })
+        });
+        const data = await res.json();
+        toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+        toast.textContent = (data.ok ? '✅ ' : '❌ ') + data.message;
+        if (data.ok) {
+          await cargarBotOverview();
+        }
+      } catch (err) {
+        toast.className = 'status-toast err';
+        toast.textContent = '❌ Error: ' + err;
+      }
+    }
+
+    async function cargarBotOverview() {
+      const nomPeriodo = (document.getElementById('nom_periodo') || {}).value || 'mes';
+      const nomInst = (document.getElementById('nom_instructor') || {}).value || 'TODOS';
+      const inasPeriodo = (document.getElementById('inas_periodo') || {}).value || 'todo';
+      const inasEstado = (document.getElementById('inas_estado_filtro') || {}).value || 'TODOS';
+      const pesvPeriodo = (document.getElementById('pesv_periodo') || {}).value || 'todo';
+      const pesvPlaca = (document.getElementById('pesv_placa_filtro') || {}).value || 'TODAS';
+
+      const qs = new URLSearchParams({
+        periodo_nomina: nomPeriodo,
+        instructor_nomina: nomInst,
+        periodo_inasistencias: inasPeriodo,
+        estado_inasistencias: inasEstado,
+        periodo_mantenimientos: pesvPeriodo,
+        placa_mantenimientos: pesvPlaca,
+      });
+
+      try {
+        const res = await fetch('/api/bot/overview?' + qs.toString());
+        const data = await res.json();
+        if (!data.ok) return;
+        BOT_DATA = data;
+
+        // Estado de Google Sheets en Header
+        const btnSheets = document.getElementById('btnSheetsStatus');
+        const lblSheets = document.getElementById('sheetsStatusLabel');
+        if (data.sheets_conectado) {
+          btnSheets.innerHTML = '🟢 Sheets Conectado';
+          lblSheets.className = 'badge badge-success';
+          lblSheets.textContent = '🟢 Sincronizado en Vivo con Google Sheets';
+        } else {
+          btnSheets.innerHTML = '🟡 Conectar Google Sheets';
+          lblSheets.className = 'badge badge-warning';
+          lblSheets.textContent = '🟡 Modo Base Local / Semilla Histórica (Clic para conectar Google Sheets en vivo)';
+        }
+
+        // Actualizar badges de la barra de módulos
+        document.getElementById('nav_badge_clases').textContent = `${data.clases.kpis.total_alumnos} Alumnos`;
+        document.getElementById('nav_badge_nomina').textContent = `${data.nomina.total_clases} Clases`;
+        document.getElementById('nav_badge_inas').textContent = `${data.inasistencias.kpis.total} (${data.inasistencias.kpis.pendientes} Pend.)`;
+        document.getElementById('nav_badge_pesv').textContent = `${data.mantenimientos.kpis.total} Mant.`;
+
+        renderizarModuloClases();
+        renderizarModuloNomina();
+        renderizarModuloInasistencias();
+        renderizarModuloPesv();
+      } catch (err) {
+        console.error('Error cargando panorama del bot:', err);
+      }
+    }
+
+    function renderizarModuloClases() {
+      if (!BOT_DATA || !BOT_DATA.clases) return;
+      const kc = BOT_DATA.clases.kpis;
+      document.getElementById('kpiClasesGrid').innerHTML = `
+        <div class="kpi-card">
+          <div class="kpi-label">Total Alumnos en Seguimiento</div>
+          <div class="kpi-value">${kc.total_alumnos}</div>
+          <div class="kpi-sub"><b>${kc.en_curso} en curso</b> • ${kc.finalizados} finalizados</div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-label">Sesiones Prácticas Registradas</div>
+          <div class="kpi-value" style="color:#34d399;">${kc.total_sesiones_registradas}</div>
+          <div class="kpi-sub">Formatos F-59, F-60, F-61 y F-62</div>
+        </div>
+        <div class="kpi-card warning">
+          <div class="kpi-label">⚠️ En Clase con Saldo en Cartera</div>
+          <div class="kpi-value" style="color:#fde68a;">${kc.alumnos_con_mora_en_clase} Alumnos</div>
+          <div class="kpi-sub">Tienen clases prácticas y saldo pendiente</div>
+        </div>
+        <div class="kpi-card danger">
+          <div class="kpi-label">🚨 En Clase con Abono $0 Global</div>
+          <div class="kpi-value" style="color:#fca5a5;">${kc.alumnos_abono_cero_en_clase} Alumnos</div>
+          <div class="kpi-sub">Bloquear programación práctica inmediata</div>
+        </div>
+      `;
+
+      const q = (document.getElementById('searchClasesInput').value || '').trim().toLowerCase();
+      const catF = document.getElementById('filtroCatClases').value;
+      const alertaF = document.getElementById('filtroAlertaCartera').value;
+
+      const rows = (BOT_DATA.clases.alumnos || []).filter(a => {
+        if (catF !== 'TODAS' && a.categoria !== catF) return false;
+        if (alertaF === 'CON_SALDO' && (a.saldo_cartera || 0) <= 0) return false;
+        if (alertaF === 'CERO_REAL' && a.alerta_cartera !== 'RIESGO_CERO_REAL') return false;
+        if (alertaF === 'FINALIZADOS' && a.estado_curso !== 'FINALIZADO') return false;
+        if (!q) return true;
+        return `${a.cedula} ${a.nombre} ${a.categoria} ${a.formato_codigo}`.toLowerCase().includes(q);
+      });
+
+      document.getElementById('clasesCountInfo').textContent = `Mostrando ${rows.length} alumnos en seguimiento práctico`;
+
+      document.getElementById('clasesTbody').innerHTML = rows.map(a => {
+        let badgeCartera = '<span class="badge badge-success">✅ Al Día / Sin Deuda</span>';
+        if (a.alerta_cartera === 'RIESGO_CERO_REAL') {
+          badgeCartera = `<span class="badge badge-danger">${a.alerta_texto}</span>`;
+        } else if (a.alerta_cartera === 'MORA_CRITICA_90') {
+          badgeCartera = `<span class="badge badge-danger">${a.alerta_texto}</span>`;
+        } else if (a.alerta_cartera === 'CON_SALDO') {
+          badgeCartera = `<span class="badge badge-warning">${a.alerta_texto}</span>`;
+        } else if (a.alerta_cartera === 'NO_CRUZADO') {
+          badgeCartera = `<span class="badge">Sin cruce en Excel actual</span>`;
+        }
+
+        const qParam = encodeURIComponent(a.cedula || a.nombre);
+        const catParam = encodeURIComponent(a.categoria || 'A2');
+
+        return `<tr>
+          <td><code>${a.cedula || 'S/D'}</code></td>
+          <td><b>${a.nombre}</b></td>
+          <td><span class="badge badge-info">${a.categoria}</span></td>
+          <td><b>${a.formato_codigo}</b></td>
+          <td>
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${a.porcentaje_avance}%;"></div></div>
+            <b>${a.clases_completadas}/${a.total_requerido}</b> (${a.porcentaje_avance}%)
+          </td>
+          <td><span class="badge ${a.estado_curso === 'FINALIZADO' ? 'badge-success' : 'badge-purple'}">${a.estado_curso}</span></td>
+          <td>${badgeCartera}</td>
+          <td class="${(a.saldo_cartera || 0) > 0 ? 'money-neg' : 'money-pos'}">${fmtCOP(a.saldo_cartera || 0)}</td>
+          <td>
+            <a href="/api/bot/pdf/alumno?q=${qParam}&cat=${catParam}" class="btn btn-primary" style="padding:5px 10px; font-size:11.5px;">📄 PDF ${a.formato_codigo}</a>
+          </td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="9" style="text-align:center; color:var(--muted); padding:20px;">No hay alumnos que coincidan con el filtro seleccionado.</td></tr>';
+    }
+
+    function renderizarModuloNomina() {
+      if (!BOT_DATA || !BOT_DATA.nomina) return;
+      const nm = BOT_DATA.nomina;
+
+      // Poblar selector de instructores conservando selección
+      const selInst = document.getElementById('nom_instructor');
+      const currentVal = selInst.value || 'TODOS';
+      const listaInst = nm.instructores_disponibles || [];
+      selInst.innerHTML = '<option value="TODOS">👥 Todos los Instructores</option>' +
+        listaInst.map(i => `<option value="${i}" ${i === currentVal ? 'selected' : ''}>👨‍🏫 ${i}</option>`).join('');
+
+      document.getElementById('kpiNominaGrid').innerHTML = `
+        <div class="kpi-card">
+          <div class="kpi-label">Periodo Consultado</div>
+          <div class="kpi-value" style="font-size:18px;">${nm.titulo_periodo}</div>
+          <div class="kpi-sub">Filtro: <b>${nm.instructor_filtro}</b></div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-label">Total Clases Prácticas (Horas)</div>
+          <div class="kpi-value" style="color:#c4b5fd;">${nm.total_clases} Clases</div>
+          <div class="kpi-sub"><b>${nm.total_sesiones} sesiones</b> registradas</div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-label">✅ Envíos A Tiempo (Min 18-28 / 40-50)</div>
+          <div class="kpi-value" style="color:#34d399;">${nm.a_tiempo}</div>
+          <div class="kpi-sub">Cumplen ventana oficial del CEA</div>
+        </div>
+        <div class="kpi-card danger">
+          <div class="kpi-label">⚠️ Envíos Fuera de Horario</div>
+          <div class="kpi-value" style="color:#fca5a5;">${nm.fuera_horario}</div>
+          <div class="kpi-sub">Antes o después del minuto permitido</div>
+        </div>
+      `;
+
+      const perCode = document.getElementById('nom_periodo').value || 'mes';
+      document.getElementById('nominaResumenTbody').innerHTML = (nm.resumen_instructores || []).map(r => {
+        const catsTxt = Object.entries(r.categorias || {}).map(([k, v]) => `${k}: <b>${v}</b>`).join(' • ');
+        const instEnc = encodeURIComponent(r.instructor);
+        return `<tr>
+          <td><b>👨‍🏫 ${r.instructor}</b></td>
+          <td>${r.sesiones} sesiones</td>
+          <td><span class="badge badge-purple" style="font-size:12.5px;">${r.clases_dictadas} clases</span></td>
+          <td><span class="badge badge-success">${r.a_tiempo} a tiempo</span></td>
+          <td><span class="badge ${r.fuera_horario > 0 ? 'badge-danger' : ''}">${r.fuera_horario} fuera de hora</span></td>
+          <td>${catsTxt || 'S/D'}</td>
+          <td>
+            <a href="/api/bot/pdf/nomina?instructor=${instEnc}&periodo=${perCode}" class="btn btn-outline" style="padding:5px 10px; font-size:11.5px;">📄 PDF Liquidación</a>
+          </td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="7" style="text-align:center; color:var(--muted);">Sin registros en este periodo</td></tr>';
+
+      const q = (document.getElementById('searchNominaInput').value || '').trim().toLowerCase();
+      const detRows = (nm.detalle_clases || []).filter(d => {
+        if (!q) return true;
+        return `${d.fecha} ${d.instructor} ${d.alumno} ${d.cedula} ${d.categoria} ${d.estado_validacion}`.toLowerCase().includes(q);
+      });
+
+      document.getElementById('nominaDetalleTbody').innerHTML = detRows.map(d => {
+        const okHora = d.estado_validacion.includes('A TIEMPO');
+        return `<tr>
+          <td>${d.fecha}</td>
+          <td><code>${d.hora}</code></td>
+          <td><b>${d.instructor}</b></td>
+          <td><code>${d.cedula}</code></td>
+          <td>${d.alumno}</td>
+          <td><span class="badge">${d.categoria}</span></td>
+          <td><b>${d.clases}</b></td>
+          <td>${d.num_clases}</td>
+          <td><span class="badge ${okHora ? 'badge-success' : 'badge-warning'}">${d.estado_validacion}</span></td>
+          <td style="color:var(--muted); font-size:11.5px;">${d.detalle_validacion}</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="10" style="text-align:center; color:var(--muted);">No hay sesiones registradas para este filtro.</td></tr>';
+
+      const cierres = BOT_DATA.cierres_jornada || [];
+      document.getElementById('cntCierresBadge').textContent = `${cierres.length} cierres`;
+      document.getElementById('cierresTbody').innerHTML = cierres.map(c => `<tr>
+        <td>${c.fecha}</td>
+        <td><code>${c.hora}</code></td>
+        <td><b>${c.instructor}</b></td>
+        <td><span class="badge badge-success">${c.estado || 'CERRADA'}</span></td>
+        <td>${c.drive_link ? `<a href="${c.drive_link}" target="_blank" style="color:#60a5fa;">🔗 Ver Foto Agenda</a>` : 'Registrada en Bot'}</td>
+      </tr>`).join('') || '<tr><td colspan="5" style="text-align:center; color:var(--muted);">Sin cierres de jornada recientes.</td></tr>';
+    }
+
+    function renderizarModuloInasistencias() {
+      if (!BOT_DATA || !BOT_DATA.inasistencias) return;
+      const ki = BOT_DATA.inasistencias.kpis;
+      document.getElementById('kpiInasGrid').innerHTML = `
+        <div class="kpi-card">
+          <div class="kpi-label">Total Inasistencias (${BOT_DATA.inasistencias.titulo_periodo})</div>
+          <div class="kpi-value">${ki.total}</div>
+          <div class="kpi-sub">Registradas en Bot y Google Sheets</div>
+        </div>
+        <div class="kpi-card danger">
+          <div class="kpi-label">⏳ Pendientes de Pago</div>
+          <div class="kpi-value" style="color:#fca5a5;">${ki.pendientes}</div>
+          <div class="kpi-sub">Alumnos por cancelar multa de inasistencia</div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-label">💵 Cancelaron en Efectivo</div>
+          <div class="kpi-value" style="color:#34d399;">${ki.efectivo}</div>
+          <div class="kpi-sub">Pagadas en caja física</div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-label">🏦 Cancelaron por Transferencia</div>
+          <div class="kpi-value" style="color:#c4b5fd;">${ki.transferencia}</div>
+          <div class="kpi-sub">Pagadas por banco / Nequi / Daviplata</div>
+        </div>
+      `;
+
+      const q = (document.getElementById('searchInasInput').value || '').trim().toLowerCase();
+      const rows = (BOT_DATA.inasistencias.registros || []).filter(r => {
+        if (!q) return true;
+        return `${r.fecha} ${r.alumno} ${r.categoria} ${r.instructor} ${r.estado_pago}`.toLowerCase().includes(q);
+      });
+
+      document.getElementById('inasCountInfo').textContent = `Mostrando ${rows.length} inasistencias`;
+
+      document.getElementById('inasTbody').innerHTML = rows.map(r => {
+        const estUp = (r.estado_pago || '').toUpperCase();
+        let badgeEst = `<span class="badge badge-danger">⏳ ${r.estado_pago}</span>`;
+        if (estUp.includes('EFECTIVO')) badgeEst = `<span class="badge badge-success">💵 ${r.estado_pago}</span>`;
+        else if (estUp.includes('TRASFERENCIA') || estUp.includes('TRANSFERENCIA')) badgeEst = `<span class="badge badge-info">🏦 ${r.estado_pago}</span>`;
+
+        const alEnc = encodeURIComponent(r.alumno);
+        return `<tr>
+          <td><code>#${r.fila}</code></td>
+          <td><b>${r.fecha}</b></td>
+          <td><b>${r.alumno}</b></td>
+          <td><span class="badge">${r.categoria}</span></td>
+          <td>${r.hora}</td>
+          <td>${r.instructor}</td>
+          <td>${badgeEst}</td>
+          <td>
+            <div style="display:flex; gap:4px;">
+              <button type="button" class="btn btn-success" style="padding:4px 8px; font-size:11px;" onclick="cambiarEstadoInasistencia(${r.fila}, 'Cancelo Efectivo')">💵 Efectivo</button>
+              <button type="button" class="btn btn-primary" style="padding:4px 8px; font-size:11px;" onclick="cambiarEstadoInasistencia(${r.fila}, 'Cancelo Trasferencia')">🏦 Transf.</button>
+              <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="cambiarEstadoInasistencia(${r.fila}, 'Pendiente Pago')">⏳ Pend.</button>
+            </div>
+          </td>
+          <td>
+            <a href="/api/bot/pdf/inasistencias?alumno=${alEnc}" class="btn btn-outline" style="padding:4px 9px; font-size:11.5px;">📄 PDF Alumno</a>
+          </td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="9" style="text-align:center; color:var(--muted);">No hay inasistencias para este filtro.</td></tr>';
+    }
+
+    function renderizarModuloPesv() {
+      if (!BOT_DATA || !BOT_DATA.mantenimientos) return;
+      const km = BOT_DATA.mantenimientos.kpis;
+      const flota = BOT_DATA.mantenimientos.flota_activa || [];
+
+      document.getElementById('kpiPesvGrid').innerHTML = `
+        <div class="kpi-card">
+          <div class="kpi-label">Total Intervenciones (${BOT_DATA.mantenimientos.titulo_periodo})</div>
+          <div class="kpi-value">${km.total}</div>
+          <div class="kpi-sub">Formato Oficial <b>SISI-F2-08</b></div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-label">🟢 Mantenimientos Preventivos</div>
+          <div class="kpi-value" style="color:#34d399;">${km.preventivos}</div>
+          <div class="kpi-sub">Cambio aceite, filtros, alineación, revisión</div>
+        </div>
+        <div class="kpi-card orange">
+          <div class="kpi-label">🟠 Mantenimientos Correctivos</div>
+          <div class="kpi-value" style="color:#fdba74;">${km.correctivos}</div>
+          <div class="kpi-sub">Reparación de frenos, embrague, llantas, etc.</div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-label">🚘 Vehículos Activos en Flota PESV</div>
+          <div class="kpi-value" style="color:#c4b5fd;">${flota.length} Vehículos</div>
+          <div class="kpi-sub">${km.vehiculos_intervenidos} intervenidos en el periodo</div>
+        </div>
+      `;
+
+      // Poblar selectores de placas
+      const selMtPlaca = document.getElementById('mt_placa');
+      selMtPlaca.innerHTML = flota.map(v => `<option value="${v.placa}">${v.icono} ${v.placa} (${v.categoria} - ${v.marca})</option>`).join('');
+
+      const selFiltroPlaca = document.getElementById('pesv_placa_filtro');
+      const curPlaca = selFiltroPlaca.value || 'TODAS';
+      selFiltroPlaca.innerHTML = '<option value="TODAS">🚘 Todas las Placas</option>' +
+        flota.map(v => `<option value="${v.placa}" ${v.placa === curPlaca ? 'selected' : ''}>${v.icono} ${v.placa}</option>`).join('');
+
+      // Chips de flota activa con opción de retiro
+      document.getElementById('flotaChipsWrap').innerHTML = flota.map(v => `
+        <span class="badge badge-info" style="padding:5px 10px; font-size:12px; display:inline-flex; align-items:center; gap:6px;">
+          ${v.icono} <b>${v.placa}</b> (${v.categoria})
+          <button type="button" onclick="retirarVehiculoWeb('${v.placa}')" title="Retirar vehículo de flota activa" style="background:none; border:none; color:#fca5a5; cursor:pointer; font-weight:800;">×</button>
+        </span>
+      `).join('');
+
+      const q = (document.getElementById('searchPesvInput').value || '').trim().toLowerCase();
+      const rows = (BOT_DATA.mantenimientos.registros || []).filter(r => {
+        if (!q) return true;
+        return `${r.id} ${r.fecha} ${r.placa} ${r.tipo_mantenimiento} ${r.actividad} ${r.taller} ${r.mecanico}`.toLowerCase().includes(q);
+      });
+
+      document.getElementById('pesvCountInfo').textContent = `Mostrando ${rows.length} mantenimientos registrados`;
+      const perCode = document.getElementById('pesv_periodo').value || 'todo';
+
+      document.getElementById('pesvTbody').innerHTML = rows.map(r => {
+        const isPrev = (r.tipo_mantenimiento || '').toUpperCase().includes('PREVENTIVO');
+        return `<tr>
+          <td><code>${r.id}</code></td>
+          <td><b>${r.fecha}</b></td>
+          <td><span class="badge badge-info"><b>${r.placa}</b></span></td>
+          <td>${r.tipo_vehiculo}</td>
+          <td><span class="badge ${isPrev ? 'badge-success' : 'badge-warning'}">${r.tipo_mantenimiento}</span></td>
+          <td><code>${r.kilometraje} km</code></td>
+          <td style="white-space:normal; max-width:340px;"><b>${r.actividad}</b></td>
+          <td>${r.taller}</td>
+          <td>${r.mecanico}</td>
+          <td>
+            <a href="/api/bot/pdf/mantenimientos?periodo=${perCode}&placa=${encodeURIComponent(r.placa)}" class="btn btn-outline" style="padding:4px 9px; font-size:11.5px;">📄 SISI-F2-08</a>
+          </td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="10" style="text-align:center; color:var(--muted);">No hay mantenimientos para este filtro.</td></tr>';
+    }
+
+    async function registrarAlumnoWeb() {
+      const cedula = document.getElementById('al_cedula').value.trim();
+      const nombre = document.getElementById('al_nombre').value.trim();
+      const categoria = document.getElementById('al_cat').value;
+      const telefono = document.getElementById('al_tel').value.trim();
+      const toast = document.getElementById('alumnoToast');
+      if (!cedula || !nombre) {
+        toast.className = 'status-toast err';
+        toast.textContent = '⚠️ Ingresa Cédula y Nombre del alumno.';
+        return;
+      }
+      const res = await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'registrar_alumno', cedula, nombre, categoria, telefono })
+      });
+      const data = await res.json();
+      toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+      toast.textContent = (data.ok ? '✅ ' : '❌ ') + data.message;
+      if (data.ok) cargarBotOverview();
+    }
+
+    async function registrarClaseWeb() {
+      const cedula = document.getElementById('cl_cedula').value.trim();
+      const alumno = document.getElementById('cl_alumno').value.trim();
+      const categoria = document.getElementById('cl_cat').value;
+      const instructor = document.getElementById('cl_instructor').value.trim();
+      const clases_str = document.getElementById('cl_nums').value.trim();
+      const toast = document.getElementById('claseToast');
+      if (!cedula || !alumno || !instructor) {
+        toast.className = 'status-toast err';
+        toast.textContent = '⚠️ Completa Cédula, Nombre e Instructor.';
+        return;
+      }
+      const res = await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'registrar_clase', cedula, alumno, categoria, instructor, clases_str })
+      });
+      const data = await res.json();
+      toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+      toast.textContent = (data.ok ? '✅ ' : '❌ ') + data.message;
+      if (data.ok) cargarBotOverview();
+    }
+
+    async function registrarInasistenciaWeb() {
+      const fecha_clase = document.getElementById('in_fecha').value.trim();
+      const alumno = document.getElementById('in_alumno').value.trim();
+      const categoria = document.getElementById('in_cat').value;
+      const hora_programada = document.getElementById('in_hora').value.trim();
+      const instructor = document.getElementById('in_instructor').value.trim();
+      const estado_pago = document.getElementById('in_estado').value;
+      const toast = document.getElementById('inasToast');
+      if (!alumno || !instructor) {
+        toast.className = 'status-toast err';
+        toast.textContent = '⚠️ Ingresa el nombre del alumno y el instructor.';
+        return;
+      }
+      const res = await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'registrar_inasistencia',
+          fecha_clase, alumno, categoria, hora_programada, instructor, estado_pago
+        })
+      });
+      const data = await res.json();
+      toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+      toast.textContent = (data.ok ? '✅ ' : '❌ ') + data.message;
+      if (data.ok) cargarBotOverview();
+    }
+
+    async function cambiarEstadoInasistencia(filaSheet, nuevoEstado) {
+      const res = await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'estado_inasistencia', fila: filaSheet, estado_pago: nuevoEstado })
+      });
+      const data = await res.json();
+      if (data.ok) cargarBotOverview();
+    }
+
+    async function registrarMantenimientoWeb() {
+      const placa = document.getElementById('mt_placa').value;
+      const tipo_mantenimiento = document.getElementById('mt_tipo').value;
+      const kilometraje = document.getElementById('mt_km').value.trim();
+      const taller = document.getElementById('mt_taller').value.trim();
+      const mecanico = document.getElementById('mt_mecanico').value.trim();
+      const actividad = document.getElementById('mt_actividad').value.trim();
+      const toast = document.getElementById('mtToast');
+      if (!placa || !actividad) {
+        toast.className = 'status-toast err';
+        toast.textContent = '⚠️ Selecciona la placa y describe la actividad realizada.';
+        return;
+      }
+      const res = await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'registrar_mantenimiento',
+          placa, tipo_mantenimiento, kilometraje, taller, mecanico, actividad
+        })
+      });
+      const data = await res.json();
+      toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+      toast.textContent = (data.ok ? '✅ ' : '❌ ') + data.message;
+      if (data.ok) cargarBotOverview();
+    }
+
+    async function agregarVehiculoWeb() {
+      const placa = document.getElementById('vh_placa').value.trim().toUpperCase();
+      const tipo = document.getElementById('vh_tipo').value;
+      const categoria = document.getElementById('vh_cat').value.trim().toUpperCase();
+      const marca = document.getElementById('vh_marca').value.trim().toUpperCase();
+      const toast = document.getElementById('vhToast');
+      if (!placa) {
+        toast.className = 'status-toast err';
+        toast.textContent = '⚠️ Ingresa la placa del vehículo.';
+        return;
+      }
+      const res = await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'vehiculo_agregar', placa, tipo, categoria, marca })
+      });
+      const data = await res.json();
+      toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+      toast.textContent = (data.ok ? '✅ ' : '❌ ') + data.message;
+      if (data.ok) cargarBotOverview();
+    }
+
+    async function retirarVehiculoWeb(placa) {
+      const res = await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'vehiculo_retirar', placa })
+      });
+      const data = await res.json();
+      if (data.ok) cargarBotOverview();
+    }
+
+    function descargarPdfNomina() {
+      const per = document.getElementById('nom_periodo').value || 'mes';
+      const inst = document.getElementById('nom_instructor').value || 'TODOS';
+      window.location.href = `/api/bot/pdf/nomina?instructor=${encodeURIComponent(inst)}&periodo=${encodeURIComponent(per)}`;
+    }
+
+    function descargarPdfInasistenciasGeneral() {
+      const per = document.getElementById('inas_periodo').value || 'todo';
+      const est = document.getElementById('inas_estado_filtro').value || 'TODOS';
+      window.location.href = `/api/bot/pdf/inasistencias?periodo=${encodeURIComponent(per)}&estado=${encodeURIComponent(est)}`;
+    }
+
+    function descargarPdfPesv() {
+      const per = document.getElementById('pesv_periodo').value || 'todo';
+      const placa = document.getElementById('pesv_placa_filtro').value || 'TODAS';
+      window.location.href = `/api/bot/pdf/mantenimientos?periodo=${encodeURIComponent(per)}&placa=${encodeURIComponent(placa)}`;
+    }
+
+    // Inicializar fecha por defecto de inasistencia hoy
+    (function initDefaults() {
+      const hoy = new Date();
+      const dd = String(hoy.getDate()).padStart(2, '0');
+      const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+      const yyyy = hoy.getFullYear();
+      const inFecha = document.getElementById('in_fecha');
+      if (inFecha) inFecha.value = `${dd}/${mm}/${yyyy}`;
+    })();
+
     cargarDatos();
+    cargarBotOverview();
   </script>
 </body>
 </html>
@@ -1356,6 +2503,112 @@ class AuditorWebHandler(BaseHTTPRequestHandler):
             pdf_bytes = STATE.get("pdf_bytes") or b""
             fecha_str = datetime.date.today().strftime("%Y%m%d")
             fname = f"Resumen_Ejecutivo_CEA_{STATE['periodicidad']}_{fecha_str}.pdf"
+            self.send_response(200)
+            self.send_header("Content-Type", "application/pdf")
+            self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+            self.send_header("Content-Length", str(len(pdf_bytes)))
+            self.end_headers()
+            self.wfile.write(pdf_bytes)
+            return
+
+        if self.path.startswith("/api/bot/overview"):
+            parsed = urllib.parse.urlparse(self.path)
+            qs = urllib.parse.parse_qs(parsed.query)
+            p_nomina = (qs.get("periodo_nomina", ["mes"])[0] or "mes").strip()
+            inst_nomina = (qs.get("instructor_nomina", ["TODOS"])[0] or "TODOS").strip()
+            p_inas = (qs.get("periodo_inasistencias", ["todo"])[0] or "todo").strip()
+            est_inas = (qs.get("estado_inasistencias", ["TODOS"])[0] or "TODOS").strip()
+            p_mant = (qs.get("periodo_mantenimientos", ["todo"])[0] or "todo").strip()
+            placa_mant = (qs.get("placa_mantenimientos", ["TODAS"])[0] or "TODAS").strip()
+
+            panorama = clases_core.sheets_service.obtener_panorama_web(
+                periodo_nomina=p_nomina,
+                instructor_nomina=inst_nomina,
+                periodo_inasistencias=p_inas,
+                estado_inasistencias=est_inas,
+                periodo_mantenimientos=p_mant,
+                placa_mantenimientos=placa_mant,
+                hallazgos_cartera=STATE.get("hallazgos"),
+            )
+            self._send_json(panorama)
+            return
+
+        if self.path.startswith("/api/bot/pdf/alumno"):
+            parsed = urllib.parse.urlparse(self.path)
+            qs = urllib.parse.parse_qs(parsed.query)
+            q_val = (qs.get("q", [""])[0] or "").strip()
+            cat_val = (qs.get("cat", ["A2"])[0] or "A2").strip().upper()
+            res_al = clases_core.sheets_service.obtener_historial_alumno(q_val)
+            alumno = res_al.get("alumno") or {"cedula": q_val, "nombre": q_val or "ALUMNO CEA", "categoria": cat_val, "telefono": ""}
+            if cat_val and cat_val in clases_core.FORMATOS_OFICIALES:
+                alumno["categoria"] = cat_val
+            registros = [
+                r for r in (res_al.get("registros") or [])
+                if not cat_val or str(r.get("categoria", "")).strip().upper() == cat_val
+            ] or (res_al.get("registros") or [])
+            pdf_buf = clases_core.generar_pdf_seguimiento(alumno, registros)
+            pdf_bytes = pdf_buf.getvalue()
+            safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", str(alumno.get("nombre", "Alumno")))
+            fname = f"Seguimiento_Clases_{alumno.get('categoria', 'CEA')}_{safe_name}.pdf"
+            self.send_response(200)
+            self.send_header("Content-Type", "application/pdf")
+            self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+            self.send_header("Content-Length", str(len(pdf_bytes)))
+            self.end_headers()
+            self.wfile.write(pdf_bytes)
+            return
+
+        if self.path.startswith("/api/bot/pdf/nomina"):
+            parsed = urllib.parse.urlparse(self.path)
+            qs = urllib.parse.parse_qs(parsed.query)
+            inst = (qs.get("instructor", ["TODOS"])[0] or "TODOS").strip()
+            periodo = (qs.get("periodo", ["mes"])[0] or "mes").strip()
+            reporte = clases_core.sheets_service.obtener_clases_por_instructor_periodo(inst, periodo)
+            pdf_buf = clases_core.generar_pdf_liquidacion_instructor(reporte)
+            pdf_bytes = pdf_buf.getvalue()
+            safe_inst = re.sub(r"[^A-Za-z0-9_-]+", "_", inst)
+            fname = f"Nomina_Liquidacion_{safe_inst}_{periodo}.pdf"
+            self.send_response(200)
+            self.send_header("Content-Type", "application/pdf")
+            self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+            self.send_header("Content-Length", str(len(pdf_bytes)))
+            self.end_headers()
+            self.wfile.write(pdf_bytes)
+            return
+
+        if self.path.startswith("/api/bot/pdf/inasistencias"):
+            parsed = urllib.parse.urlparse(self.path)
+            qs = urllib.parse.parse_qs(parsed.query)
+            alumno_q = (qs.get("alumno", [""])[0] or "").strip()
+            if alumno_q:
+                datos_al = clases_core.sheets_service.buscar_inasistencias_alumno(alumno_q)
+                pdf_buf = clases_core.generar_pdf_inasistencias_individual(datos_al)
+                safe_al = re.sub(r"[^A-Za-z0-9_-]+", "_", alumno_q)
+                fname = f"Inasistencias_Alumno_{safe_al}.pdf"
+            else:
+                periodo = (qs.get("periodo", ["todo"])[0] or "todo").strip()
+                estado = (qs.get("estado", ["TODOS"])[0] or "TODOS").strip()
+                datos_per = clases_core.sheets_service.obtener_inasistencias_periodo(periodo, estado)
+                pdf_buf = clases_core.generar_pdf_inasistencias_periodo(datos_per)
+                fname = f"Reporte_Inasistencias_{periodo}_{estado}.pdf"
+            pdf_bytes = pdf_buf.getvalue()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/pdf")
+            self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+            self.send_header("Content-Length", str(len(pdf_bytes)))
+            self.end_headers()
+            self.wfile.write(pdf_bytes)
+            return
+
+        if self.path.startswith("/api/bot/pdf/mantenimientos"):
+            parsed = urllib.parse.urlparse(self.path)
+            qs = urllib.parse.parse_qs(parsed.query)
+            periodo = (qs.get("periodo", ["todo"])[0] or "todo").strip()
+            placa = (qs.get("placa", ["TODAS"])[0] or "TODAS").strip()
+            datos_mt = clases_core.sheets_service.obtener_mantenimientos_periodo(periodo, placa)
+            pdf_buf = clases_core.generar_pdf_mantenimientos_pesv(datos_mt)
+            pdf_bytes = pdf_buf.getvalue()
+            fname = f"PESV_SISI_F2_08_{placa}_{periodo}.pdf"
             self.send_response(200)
             self.send_header("Content-Type", "application/pdf")
             self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
@@ -1508,6 +2761,141 @@ class AuditorWebHandler(BaseHTTPRequestHandler):
                 )
                 self._send_json({"ok": ok, "message": msg_out})
                 return
+
+        if self.path == "/api/bot/action":
+            length = int(self.headers.get("Content-Length", "0"))
+            body_raw = self.rfile.read(length) if length > 0 else b"{}"
+            try:
+                payload = json.loads(body_raw.decode("utf-8"))
+            except Exception:
+                payload = {}
+
+            action = str(payload.get("action", "")).strip()
+
+            if action == "conectar_sheets":
+                raw_json = str(payload.get("credentials_json", "")).strip()
+                res = clases_core.sheets_service.configurar_credenciales_en_vivo(raw_json)
+                self._send_json(res)
+                return
+
+            if action == "registrar_alumno":
+                cedula = str(payload.get("cedula", "")).strip()
+                nombre = str(payload.get("nombre", "")).strip().upper()
+                categoria = str(payload.get("categoria", "A2")).strip().upper()
+                telefono = str(payload.get("telefono", "")).strip()
+                ok = clases_core.sheets_service.asegurar_alumno(cedula, nombre, categoria, telefono)
+                self._send_json({
+                    "ok": bool(ok),
+                    "message": f"Alumno {nombre} ({categoria} - C.C. {cedula}) guardado y sincronizado.",
+                })
+                return
+
+            if action == "registrar_clase":
+                cedula = str(payload.get("cedula", "")).strip()
+                alumno = str(payload.get("alumno", "")).strip().upper()
+                categoria = str(payload.get("categoria", "A2")).strip().upper()
+                instructor = str(payload.get("instructor", "")).strip().upper()
+                clases_str = str(payload.get("clases_str", "1, 2")).strip()
+                nums = [int(x) for x in re.findall(r"\d+", clases_str)] or [1]
+                clases_core.sheets_service.asegurar_alumno(cedula, alumno, categoria, "")
+                ahora_col = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-5)))
+                ts_str = ahora_col.strftime("%Y-%m-%d %H:%M:%S")
+                f_str = ahora_col.strftime("%Y-%m-%d")
+                h_str = ahora_col.strftime("%H:%M:%S")
+                clases_fmt = clases_core.formatear_clases(nums)
+                tema_auto = clases_core.obtener_temas_para_clases(categoria, nums)
+                fila_idx = clases_core.sheets_service.registrar_clase(
+                    timestamp=ts_str,
+                    fecha_reporte=f_str,
+                    hora_reporte=h_str,
+                    instructor=instructor,
+                    id_alumno=cedula,
+                    nombre_alumno=alumno,
+                    categoria=categoria,
+                    clases_reportadas=clases_fmt,
+                    tema_registrado=tema_auto,
+                    url_foto_drive="Registrado en Web",
+                    validacion_horario="EN TIEMPO (WEB)",
+                    observacion_instructor=f"Registrado por {AUDITOR_USER} desde Dashboard Web",
+                )
+                self._send_json({
+                    "ok": bool(fila_idx),
+                    "message": f"Clase(s) {clases_fmt} registrada(s) para {alumno} ({categoria}) con {instructor}.",
+                })
+                return
+
+            if action == "registrar_inasistencia":
+                res_in = clases_core.sheets_service.registrar_inasistencia(
+                    documento_alumno=str(payload.get("cedula", "")).strip(),
+                    nombre_alumno=str(payload.get("alumno", "")).strip().upper(),
+                    categoria=str(payload.get("categoria", "B1")).strip().upper(),
+                    clases_faltadas="No especificada",
+                    nombre_instructor=str(payload.get("instructor", "")).strip().upper(),
+                    no_horas=2,
+                    valor_hora=25000,
+                    estado=str(payload.get("estado_pago", "Pendiente Pago")).strip(),
+                    fecha=str(payload.get("fecha_clase", "")).strip(),
+                    hora=str(payload.get("hora_programada", "")).strip(),
+                )
+                self._send_json({
+                    "ok": bool(res_in),
+                    "message": f"Inasistencia #{res_in.get('Consecutivo', '')} registrada y sincronizada con el Bot.",
+                })
+                return
+
+            if action == "estado_inasistencia":
+                fila = str(payload.get("fila", "")).strip()
+                nuevo_estado = str(payload.get("estado_pago", "Cancelo Efectivo")).strip()
+                res_up = clases_core.sheets_service.actualizar_estado_inasistencia(fila, nuevo_estado)
+                self._send_json({
+                    "ok": res_up is not None,
+                    "message": f"Inasistencia #{fila} actualizada a {nuevo_estado}.",
+                })
+                return
+
+            if action == "registrar_mantenimiento":
+                res_mt = clases_core.sheets_service.registrar_mantenimiento(
+                    placa=str(payload.get("placa", "")).strip().upper(),
+                    tipo_mantenimiento=str(payload.get("tipo_mantenimiento", "PREVENTIVO")).strip(),
+                    establecimiento=str(payload.get("taller", "TALLER AUTORIZADO")).strip().upper(),
+                    nit_cc="0",
+                    actividad_realizada=str(payload.get("actividad", "")).strip().upper(),
+                    nombre_tecnico=str(payload.get("mecanico", "")).strip().upper(),
+                    rol="MECANICO",
+                    observaciones=f"Registrado desde Web ({AUDITOR_USER})",
+                    kilometraje_actual=str(payload.get("kilometraje", "0")).strip(),
+                )
+                self._send_json({
+                    "ok": bool(res_mt),
+                    "message": f"Mantenimiento registrado en SISI-F2-08 para placa {res_mt.get('Placa', '')}.",
+                })
+                return
+
+            if action == "vehiculo_agregar":
+                res_vh = clases_core.sheets_service.agregar_vehiculo_pesv(
+                    placa=str(payload.get("placa", "")).strip().upper(),
+                    tipo=str(payload.get("tipo", "CARRO")).strip().upper(),
+                    categoria=str(payload.get("categoria", "B1")).strip().upper(),
+                    marca=str(payload.get("marca", "")).strip().upper(),
+                )
+                self._send_json({
+                    "ok": bool(res_vh.get("ok")),
+                    "message": f"Vehículo {res_vh.get('placa', '')} activo en flota PESV.",
+                })
+                return
+
+            if action == "vehiculo_retirar":
+                res_ret = clases_core.sheets_service.retirar_vehiculo_pesv(
+                    placa=str(payload.get("placa", "")).strip().upper(),
+                )
+                self._send_json({
+                    "ok": bool(res_ret.get("ok")),
+                    "message": f"Vehículo {res_ret.get('placa', '')} retirado de flota activa.",
+                })
+                return
+
+            self._send_json({"ok": False, "message": f"Acción desconocida: {action}"}, 400)
+            return
 
         self.send_response(404)
         self.end_headers()
