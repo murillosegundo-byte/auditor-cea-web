@@ -50,10 +50,10 @@ except Exception as _exc_patch:
     pass
 
 _BOOT_DIR = Path(__file__).resolve().parent
-if not (_BOOT_DIR / 'bot_agenda_cea.py').exists():
-    (_BOOT_DIR / 'bot_agenda_cea.py').write_bytes(_zlib_boot.decompress(_b64_boot.b64decode('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')))
-if not (_BOOT_DIR / 'crm_whatsapp_cea.py').exists():
+try:
+    (_BOOT_DIR / 'bot_agenda_cea.py').write_bytes(_zlib_boot.decompress(_b64_boot.b64decode('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')))
     (_BOOT_DIR / 'crm_whatsapp_cea.py').write_bytes(_zlib_boot.decompress(_b64_boot.b64decode('eNrVXF1vG8d6vuevmGzgeilTtCjJcUxUSVci7fBUIlVKPkGOrK6Huyt57eUus7uUJesIODe9Kg4O2h6gQFAgcIFe5MIXRW6K3Bwg/Cf5A81P6PPOzH4vLdlOWtSApeXszDvvvN8fQ2ma1tj6Jf81dsZ77MsvjMMDY3+fDYwW6+9tP+6NWP/g0Ogt/nhwONgZsV6fGdvGsDcajthXbG90OBrT2Li/Z4z/tn84GD5iP/3hz2ynb/zC2O074dSNnW6j02a7nnPGQ+Z4LHRO3SgOA2YF05nnxAGzHWZ5ruPHTsS+nuND4EdzL+Y+mwUh+/IZjyNjNmPb88j1nShqMMZ0w5/7lhtEtPght5xJELy4O/CjmJ+GfMqenkzaU+dpixmnBJdmDQz6uefEnD0dO9Es8PHR4xh/2iKQTw9D7kcnTugAMJcrnjbbjfU2FtkucAdwe/Emil2LTwVUa7547cc8YjMnjAKfHnC6uU+oX7DIodPYeAbedCjLm7shbRWHmIqtQ6AxJ7AsQYXpt+jZmHDfDvyARs6iNhODO4F/hn3cxfc+GzvcA24bbbYTzl+BsHweB9PF6ww3LyBsgmjmWLEkU0pIoAIMiBc8tJ65ZwHjVoxfhBqRiMfh4o0194DkweCgv8Pu0t4xn7iea3Ob9QbGkM14SGjHAI/tv567i+/AHHbB6dxTgHAJQhj47cZmm/WfO9acJgK9GV/8JxcYjZ0pD184seuf4mOEkZnH/dj1PEXTOY/cMzzrrm+7Z6495x4LhFR4Qew0CeGzxRueHc3YH2CC43sQCWzhhvL0T19yEod2Q4MKNtwpIMTM5jG2njrJ5+dgYfIcpqNz37UCG2yMeeMkDKY4ePzMcydMvd/HR/kivpjRQdS44V+0WM+14hbbhby32GgWu5ARr8UO55D7RmPbOOibvcGYbQkgummeuJ5jms025CLwzhy92QaVwc3Gbt/oHZi9bXPfOPwC89Old5nmOdyOzJdEAT6bmZbD23QSrbG/awwPB7u7xrKVGbHNMONEDkLj0BgPHhomzMlgz+gZ5o5xCBiXRHemGetal316b3Ntba0lR7Y7GOmsr+WGdsTQ5r213NBob3vEjPU7cvqna3Xv5LoH+XXjPrbvPxqNB78zdgaLfxkyMel+fs6+sG0PB8PBmNZ3FOyrRoEa/YfG493DrmDPEWxRK/eEH8fH2SEHhol9H+/3x9hzNDTvrQGufCfe+8F0EjoY037+9s//AYm25hBcbgkthfaSZR1AhGBRngUXpHqkd/fWbjH9keNjptfUWhm42DmPA0DT0yEx/OPrLwLYh0u529VH7Odv/+kf2TCI+TSQNtPHbyeyQncCYXMYZyuw58yAVWCjUNjWFaYfOFCxbUAKv54v3rRgOzhb32Af37u32nnQZFpxU6HhiS0OhdbFc+a5Vmog8dKeW/KsK5cW9Ok0CF1+tQLrJ0wfYYdRn3SQ02rHc+T89hP/iV/a8Kd/+wdBQCe0uTwUGUd4ihnHJ5zKJRN64bCVw1FvtNJlOxBdqHnsLL6HuYGduIDJW7y2yApGLeacL17DGGLGdPGdDTWOhJkM3VfcxnNp9wucCObimTSWMIGv/ciNg3YFzZ+//efv2QqcjjKHZLb4adBdYfs4M3ZzBb9DwfCpG02DhO0r4DvRBtOlL4y4Z8P6ejgCXKWPQXA5dgLYX15HoR//8ndzF1hKnoMieHTCM4dgQfDSjSY49QmQEL5VOJgICu5z2EYSDvhEW7yaY+jMeUVLnHNyHAmlPs82bkrxvFIaRvGDaaybY5ja3mi5Mvzpj//9X39iO8A2hOuawz+yvQDSaKwzvTdPNKTTYXCp4NwqOwyA00A4STt4T6WQm44RVEzJgZLEJQIMp1CjE11JOcIO5FhRGK6wGK8leewU1xIvMB9WOmAryRmgYLA3tygGiISKeLRnqm5NlglwVTJbmfSNHw8PISRxYIMu8TxCcERiXicPSuAih3RVqKeQAicVwbzgtdmPfznE3j5cZiDig2cBVokgyqV4yJ14ACbU3pnOHAorcrKzXCR2jPF4ZG53TGGPl8jDN/+aCgMPodP7PIxliMC2O/BG+4sfJrAtAYw609fXJEnfUwywV7+O2xB+3yGbRFSCMZgAITJN4sgrEi8gc8EOoFRCfXJYrZQFQJ8u3vgutDvBtpVZH+K8iExmHKKV/gKDEJPNADh0Y6y8U2ejcobIVeoQNeu4L/1KVLYuIsaO4qJdSYyKlIHTOfhKnxM7IkyCI/FDSESGn4TuLTwnR20KYyDYv4zxP33zmu0jOgqkDu3gRWYI7rCE5nchOu/FavjcAxfn5R6seiTIkNtDbbBSr/yMQwEoFMfbGj7czD+0KNLnpDjEBj6dUGivfCQ9gdC1qltwdLOi4ygwFMgV/HRmURQzKY+CMgXCd0CfTyB9FPaTAbLJvBE9ajmJsKhhOyfM9INwasbnsR51KQBqstXP6HdXTIwQDeGDHjFEAJrWbOODO0NwOp8h1NGb6SRNaz8PXF+32AlmWjhOPnpu0ybEJkfXhg97GkKtJnNPClNUCHGhW032EQDu+ZoEHzrxPPTxqx3NJ3qoHf29sfq7tdUH7PgOAGlMQEsQS07lIRQHOc0YUccJsikdDzXns91TNyb8U+hPegKqJqJBWqVOLnEBzp7j63JZk21tsc4ag7tRgNqkWnH00kVIr21ozW5KeHUI7d59DZIpZ+dPp0Yk9hYPESSYWYyuC6yXhqxym1z+tAV4VqxX4970FNUEoe2cQ2CxVYZ0HF50C5Ib8TPHBnRKEdpegORDrwEEjbRNUmMdmhDYyCu2tHl8svppQsXkH/BwkR+DaL7l6AJ4S2DeLG5bPB1kj9I3OT8D6JxbzixmffEL2VYRBIxwgd4ZOEXz0zmHRuaIrhPqCO2YoLM0O+qDMFGZNL0LX2pYKyZhs7wUJjJuShk38UOiU1bAphBPpCgHo6Gxi+yoZ2ilXY+wUmQ1mWmWDwksAoE5rcz2it/J66tGRRZqmP4SXs2RXBfSYc+ns0jPsEBIjmAsdEweWa679ZB7kdOCmbBhjrfWm/S6JCuNt3P1Wo6aitYySQ75S6lFlJEfZYxCrp4wCuJYSLZvohFkuooKUQTxnrpAYFvCgzSlecHnqk4ktoPqE++gBmKE/B9hnlRC2umDH7zU0w/041XgO8URuJaY688CBM9bq/ea6ijIeUzQFEAFcJKfE5qta7e+Wr01Xb1lK6YiqCRGYeJRit1l0UW6NkUQL/kqwup8eKBCBGnUacq9+xudzvrm/fXO+np5XhaKfDU+7DF9P6mJMVVCZA+3m+VFlmMjMqVFlTdJkmu6CCEQZ9Eko7IrZiCiEu+SXdIi5SOmi+pkZVdRYAxMV2w87h/sj4a9vjkwzP3+sDfoDw/75RVIbBCAmghcIv7cMVUVlZbLUOkjJvLFAEHNawovTsgFi0isFhI304qkwoJo1pLxsazMUqhBQZLzPIDi5JOnqQrqKGHK8joRjlKpIAmuRYBfEznXRkAIgNrtdhnXE0Rh3EwSO6B5ol0qubtiaw+6mxv1KxS1qPzJLWHj8gs7azULiclUvcgXyLBurSJkiPKIXruiiBvK8jLozNaRX1MpUhd4gRxiG8bb03azDe44NiZRfVitcUJ8omKow0UI21IhciBD5zwtrlo3UZz1axRnvbPxyf1PN9Y/Wa44ezy8+EAN2e4s15C0eNuT5Vokg0pp3qogh2NjePCwP+4Pd6AixkH/YDS+uX48o0RiMkdwTQKIgE5Vz6j8XT3tEu044N7cDpTQUtZluRNka6Lot4+ESuxWrPJbMgeGIjkhLXon2SbZefC+sv3gQ2W7L8uLkFfQC6otgApJll6KSztB9T6Z7D2bq5pT6pYzCry7IG9cI8hrHYjx/bVPHiwX5HFgLd4EHyjK+fL1tVZftJsGxq9p6fdJ7AKZ6SW2OFeYvaEoS9K0KJyoqZ1FASgoSkZii4jCX+zzPED2RtFDwBY/gMHvYas7995TntdvKs+dZfKsWoOw145/RmKtiEsEjJzTuTslGge51lqQSf56Ivl88UPW4AP14LymaQPt3aV887o4ZxOC/mmn8+lyKf/S9RCJst+AWj7cif43L8WA+VwObHR+zXAna8HeTUMeZtjRr6kBg1xcU4xHbij8j6jESy1HJEGz0DlxQjf0g6jN+hE1c6hiOAuEa6a6YBiLzsSZbLS239mCb76vBd/8UAu+I5GCqMtua8asGiFBTJa6sKU2+1j8NJPEOUuzVHhfqN6osSQ1qy4ST93a7EykbUMkId1qJlrMtuqTUAH618k/5XGCCRWXkdVzH3kPhCzryIZT/RnHwV+dglUIhKFIvJv2g8snRUZE5yxVFeiV3FecBJNqUtublRrErI+ppQ/IczdkCMZt1xJ2LzNd0V0r3/OXzcAldw1k97/U+198LzZKrwJEJtTLtAOrvu+anP3yqm5ZUnoRoiH650eRE1fWE4Cj4ySRrxI9ZdzJXCC+VZ3TPnViXRPNFzNDQhMFkiWTkxstapZCQGyDjyHVQeV+pbJBYC0vOoYS9PDxXn886o128Ht4OBITmqWqAWhD4pDWcNVSY/fx3nAkUYIlkaO3h4heYG5vt9jt280rlgwb+/3d3UFvlLzQKoUJYlyl+FBl7hH+ExfCwtw4eAHNI+7GgiYx0QR4t6OZ58Z6M6mpxk322RbbuCpvLt4JGGLC+rWYqOIW1A82TFdrEd00lfhLpXH80EVaa1GHpd7sZPJk+bGZGsQIjgOv1tI3sbo7RJAKL3KWuTCe4lteAMtMwlUYx2K6EoKTxbKxmGFCc9rFWRZsNflWaorkXhNZUnder4PwJ4kONhLxhTGdErekbU7p7tlJgZkmZNKCcAWu2eE+iWSlAO/ZSr2SoKaVldUl1KPsHWGSgkun4AiqH5EAq8YoLRGjNCudClknzV0RKWxchXMsLGiczjrjHoiIwAHjJ17AY73mgoxACqta8NniakrpfCkQRCK2PGU61Ehnfpxc7FKXtfKXskrXsSJXtautxXcUxyHhkuKf3bDTSWlgwz0+CXmU4YPAL+XWEkOUUlnGiGUDBDm2npE0A0LVGkhaJJsINc+2dOB9hatr5DQdsUoGs1u2c2atIclMX4KsCoYlskuMjKipxmJDwNC1/fHoYL+/I42sMXw83BmIx51dGY42a61ShtQyy0RoJnNaeIK3oA3rHVxlde1W7K/YdbvW8of2XjoT2/MXjTwvlvCBhDgL30l+tT3jcDzYebxr9EZaZW56UlPED7ZckwLPO7oUjmRdBZRUFLo+o+ybACVVsQTQ2B4NRweAsybUvvT2t8buaLzzeHwwEjNyHSQIZfeGR9C0GyJIJjjbQZiPRFIzQraW5UHNPE/I/CmRLRr0Yok//+oIT7L3EyMR8ESCwLSCL1NjeadEQ5nEVwEeKWjH7M4W6xTkRpywJBVF/CoeUMB4+wmOiugdV9fUOsA7W0sZA7HILG8mALkT5O5Im/3hbwf1J8n7+KVI1fnuO1vXIVBb5KxiUAg/bkTLIvuPf2m8e/2DHWN8WE+vfIhT2LeqfNWo63/5dJnrrkSMSXTp2SqoFApBug1jXZ2u2l6ubyZXwSm6qJ6vhqFlKZO78YibXF0Ul/FoGMwp2i3scVei1WQriEeg5B3hByWqn7E16YWTGFHAtNQ988DPQFYU9sZg8wWA3A2h4AUMzGE4d3K3fl7M3Khwj0gWwAhmWk+hCWKkVOMom7MKYctltRyBTbpeF4RqVf5NuWjllyotJb6Upuf5YCa2Nz9Yml8yv2Wat8r3D1MtUpNzI+XTlmTFnFkxEbI0XLcqk4b8omy0UpJaqlhYK6XpLXPIGS+BmLfqFVD5l0UYubKrVjAVgHFU2OlSy7970WIrK2dXInzD8xl5XAhJ7Nh6AUyb8p9Ib7bYC+diy+PTic3ZeZetnh91MieZ+fDjPD5pWQYb5q5JZDOEGcHLqjlRl7hU9UmVIJBrBSa34rm4DidrQ/qMX9CthG6pWCIKTLKUMgkCT15XuVmJSbT2VZv/l7k7UHNPgN36ontrT0tsq+PVZpTqcMvTSpUKyZSxMLuUJGT3YE607JLAJWAerW52j69ksCfToDpwhQQpvYqmUlYpK7XLbpy9NlT0KOPFOlg3CSbrwcoCfh1MVdpvLbnJoBpczfKZk2p9dFoHdEktv3WDewulfURtu5675CxK3GjkskySKEoB6bmcfSl/pQrE2kBYGU4XaoFyIK6Z+osfpoRh/otVaeJNzbj0y1dtLSm5bs/JQFPCfsGZuFjkiJ7DoCcu5nuL70h6UxU0XbvuZK5dJ2Rkpzy7plKD4+oJNDqvl4ERlxfVOyH5ekKUG5duCAKGmtWcSakXZR6KKgLDqu6V02qpSNWUVtRopJKJwox4rCyuT4iurfHI0TK0VKHqoRWz4PRTGUqmC/VglmgDwcyWloEK+a6HJ0VfEh5PFc7U95uOkztbZNgLa5Z1aoqcUzojYrqiCcWetyXDbx9fMf0O2dSrJkv9FH0Fhl2m5LtKFIaabEH6VaysVXpCvdJLMFCvdz5N4WMAbkoGXQSoa82r4v3ytKmKx1bNxXX5kHuT9kjlQ/5NTY80HcvNS5uk8iH3Jt8MTZ9z75e2PjPxKM+uNjmNmIKs7LqKbN2Q+cka4eoLsnlSVdqZqYxUJlU7mHVzr29apg1LadypaLvDZ5AukhS6qz+d0LWb1Oym9yuusuil7fqRE8Y6UhMhRs3G9ZK8XILVFw4y2U3iLYWQl+CU9wYDgwRZXeaeTsiaKuaKsEzZ3eRuMSGp3qshl+4TEJewMEerLqNwDWohvNP/myjuOh+VrzWTaxKeRQzm/NM7uaWayQrUdfXMPDM+2HrSpd4lnKy13rX6QeDJ4KUUqpskKpnsTqnU8V7Wuy/OXjbRebqQla4JlYYB9YCpj+7H4eJ7Vg6EhDrIr0gTSsgAs0a5uHGui5/mJJzHiSJkBhaLOSgvxqkAS3FypgAgSl7+NVWfNXxxBHmhnc0cKgGqCxCprn7pTBCCyW/riK/3JMFYdFfqvvSiuvO8y27fuXefbXQ6TN04ZqvsN3Pus33Y/lf4oL7ddBsAJ16AfI2+GgRBtOU3h+jeIUe2igdqIXushIfky0VqYqrt9jggUJUv+Iuv4lNdqnD6NNpNqUqKVBpKIslKBExV4X1QLAt96TuR3uKN74jvBucIheNadIz8eRJPfp0pSjQUKa6IisWfgoDjr6rwea26d9m5MC7nqW2hc5fnqg7O/0H2ypE/nBZaup4LCtLHI89Pc09hH306Q4E31L6i+ZHqYaULjjOrKlZJoN1cE1FlHEmyYjme+MalFXgBeSQ/gEsjaT4/Z+fy/zn4uHGe/Ms1+kyZglOb0KG/G6GHmv5598mdz+/dP3oSrR6vND/XN57Yl+tX+NjGZzxv5J43r5rgluc3K+0+glwq+8J6uLA2+bZybfov1rZPw2A+0/NtHPkFyC2iVejM6K9BlKaKL40lGZTGVn/6w7//vvskThgmqddL/ryFskB0UxjJG11yocJV4IvveXqJQmS1Yt+cz+Tu+SQ7a19XLFqeJvKGqSYYSoBKpBEACrdQiyV4+pML6VrZ8X68vTvYGZVHF9+Uhus3qsDfLsOXXwB9O5gqmrDdRTD0ZdJroGBNuZG2pM5RIGihi1LaVfVUluyr9qhtw2SYSBchpTPIt9J1Qu4x/TUe+os7uwZiwt8n+KqPBdA0C2PQlk5r/aortOlJtHLEZ8dP2p/jaYpfTdWdFzIOZ+3x02gLWw4eDUf0NzIO+iW5bnW1itIVUSYLIjvM2WCT/XW5sVw+Zz5GTl1YuWKWcrxmh8/Y5jVbFD4fdTfXj4vFHHUksg/CbFb9SBF+3YwjDB6/e2CXGqlMDioJ64cmrauXqeu4esvN4EISW5fIKgJ+0L1futOy9NqvjOhKGRCimbfd+8XzTe/4Clk/6nbW146J3dK8ix5TcqmVq5COqyplDo+bXoHPvrWTZcTFr3LIe7DX3vitSXvfNU1+r/u9GRfILQWU3otrm+pvLhFNCvlC1iQptjnrk+e3qk+SNaUzs5Anux9wo/Q7XUh5yIGTJgsINnPKIHcrRMB8eRb+P3EZgCQ=')))
+except Exception: pass
 
 import bot_agenda_cea
 import crm_whatsapp_cea
@@ -978,8 +978,8 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
         <span class="badge badge-info" id="nav_badge_robot">TG + WhatsApp</span>
       </button>
       <button type="button" class="mod-btn" onclick="cambiarModulo('mod_agenda', this)">
-        <span>📅 7. Agenda Google Calendar</span>
-        <span class="badge badge-purple" id="nav_badge_agenda">Bot Agenda</span>
+        <span>📅 7. Agenda + Bot + Baúl</span>
+        <span class="badge badge-purple" id="nav_badge_agenda">Calendar + TG</span>
       </button>
       <button type="button" class="mod-btn" onclick="cambiarModulo('mod_whatsapp', this)">
         <span>💬 8. WhatsApp IA & Remarketing</span>
@@ -1745,21 +1745,50 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
     </div>
 
     <!-- ======================================================================= -->
-    <!-- MÓDULO 7: BOT DE AGENDA Y GOOGLE CALENDAR INTEGRADO                     -->
+    <!-- MÓDULO 7: BOT DE AGENDA, GOOGLE CALENDAR Y BAÚL DIGITAL INTEGRADO        -->
     <!-- ======================================================================= -->
     <div id="mod_agenda" class="mod-section">
+      <!-- Franja de Conexión en 1 Clic: Bot de Telegram + Google Calendar (token.json) -->
+      <div class="panel" style="margin-bottom:16px; border-color:#3b82f6; background:linear-gradient(180deg, rgba(30,58,138,0.22), rgba(15,23,42,0.92));">
+        <div class="panel-title">
+          <span>🔌 Conexión en Tiempo Real: Bot de Agenda Telegram + Google Calendar (`token.json`) + Baúl Digital</span>
+          <span class="badge badge-purple" id="gcalStatusBadge">Conectar Bot y Calendar</span>
+        </div>
+        <div class="form-grid-4">
+          <div>
+            <label class="field-label">🤖 Token Bot de Agenda Telegram (`TELEGRAM_TOKEN`)</label>
+            <input type="password" id="ag_cfg_token" placeholder="Pega aquí tu TELEGRAM_TOKEN de BotFather..." />
+          </div>
+          <div>
+            <label class="field-label">✈️ Tu Chat ID de Telegram (Notificaciones y Baúl)</label>
+            <input type="text" id="ag_cfg_chat" value="1567561963" placeholder="Ej: 1567561963" />
+          </div>
+          <div>
+            <label class="field-label">📅 Subir o Pegar `token.json` de Google Calendar</label>
+            <div style="display:flex; gap:6px;">
+              <input type="file" accept=".json" onchange="leerTokenCalendarArchivo(this)" style="max-width:135px; font-size:11px;" />
+              <input type="text" id="ag_cfg_gcal" placeholder='Pega aquí {"token":..., "refresh_token":...}' />
+            </div>
+          </div>
+          <div>
+            <button type="button" class="btn btn-primary" style="width:100%; justify-content:center;" onclick="conectarAgendaTelegramYCalendar()">🔌 Conectar Calendar y Bot Telegram</button>
+          </div>
+        </div>
+        <div id="agConfigToast" class="status-toast"></div>
+      </div>
+
       <div class="kpi-grid" id="kpiAgendaGrid"></div>
 
       <div class="two-col-forms" style="margin-bottom:18px;">
         <div class="panel">
           <div class="panel-title">
             <span>➕ Agendar Nuevo Evento Puntual o Diario (Sincronizado con Google Calendar + Bot Telegram)</span>
-            <span class="badge badge-purple" id="gcalStatusBadge">Google Calendar + Bot</span>
+            <span class="badge badge-info">Auto-detecta hora en título (ej: "4 pm")</span>
           </div>
           <div class="form-row-grid">
             <div style="grid-column: span 2;">
               <label class="field-label">📌 Título o Actividad de la Agenda *</label>
-              <input type="text" id="ag_titulo" placeholder="Ej: Reunión Auditoría Cartera / Cierre Exámenes CRC La 27" />
+              <input type="text" id="ag_titulo" placeholder="Ej: Reunión a las 4 pm / Auditoría Cartera / Cierre Exámenes CRC La 27" />
             </div>
             <div>
               <label class="field-label">📅 Fecha (`YYYY-MM-DD`)</label>
@@ -1791,7 +1820,7 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
             </div>
             <div>
               <label class="field-label">✈️ Chat ID Telegram (Recordatorio)</label>
-              <input type="text" id="ag_chat_id" placeholder="Opcional (usa el del Bot)" />
+              <input type="text" id="ag_chat_id" value="1567561963" placeholder="1567561963" />
             </div>
             <div style="grid-column: span 2;">
               <button type="button" class="btn btn-primary" style="width:100%; justify-content:center;" onclick="crearEventoAgendaWeb()">📅 Guardar en Google Calendar y Notificar por Telegram</button>
@@ -1824,12 +1853,12 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" style="margin-bottom:18px;">
         <div class="panel-title">
           <span>📅 Agenda de los Próximos 7 Días (Eventos Puntuales y Rutinas Diarias del CEA)</span>
           <a href="/api/bot/download_agenda_script" class="btn btn-outline">⬇️ Descargar `bot_agenda_cea.py`</a>
         </div>
-        <div class="table-wrap" style="max-height:420px;">
+        <div class="table-wrap" style="max-height:360px;">
           <table>
             <thead>
               <tr>
@@ -1844,6 +1873,54 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
               </tr>
             </thead>
             <tbody id="agendaSemanaTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- BAÚL DIGITAL SINCRONIZADO ENTRE BOT DE TELEGRAM Y DASHBOARD WEB -->
+      <div class="panel" style="border-color:#8b5cf6;">
+        <div class="panel-title">
+          <span>🗄️ Baúl Digital del Bot y Dashboard (Notas, Accesos, Contabilidad, Enlaces y Apuntes Rápidos)</span>
+          <span class="badge badge-purple">Sincronizado con `/baul` en Telegram</span>
+        </div>
+        <div class="form-grid-4" style="margin-bottom:14px;">
+          <div>
+            <label class="field-label">🏷️ Categoría del Baúl</label>
+            <select id="baul_cat">
+              <option value="NOTA / PENDIENTE">📌 Nota / Pendiente</option>
+              <option value="ACCESO / LINK">🔗 Acceso / Enlace / Clave</option>
+              <option value="CONTABILIDAD">💰 Contabilidad / Facturación</option>
+              <option value="DOCUMENTO / RUNT">📄 Documento / RUNT / CRC</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">📌 Título del Apunte o Recurso *</label>
+            <input type="text" id="baul_titulo" placeholder="Ej: Clave Portal SISEC / Nota Reunión 4 PM" />
+          </div>
+          <div>
+            <label class="field-label">📝 Contenido / Detalle / Enlace *</label>
+            <input type="text" id="baul_contenido" placeholder="Escribe el detalle, link, cuenta o recordatorio..." />
+          </div>
+          <div>
+            <button type="button" class="btn btn-primary" style="width:100%; justify-content:center;" onclick="guardarItemBaulWeb()">🗄️ Guardar en Baúl + Enviar a TG</button>
+          </div>
+        </div>
+        <div id="baulToast" class="status-toast" style="margin-bottom:10px;"></div>
+        <div class="table-wrap" style="max-height:320px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Categoría</th>
+                <th>Título</th>
+                <th>Contenido / Detalle Guardado en el Baúl</th>
+                <th>Fecha</th>
+                <th>Origen</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="baulTbody">
+              <tr><td colspan="6" style="text-align:center; color:var(--muted);">Cargando Baúl Digital...</td></tr>
+            </tbody>
           </table>
         </div>
       </div>
@@ -2541,7 +2618,13 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
       const target = document.getElementById(modId);
       if (target) target.classList.add('active');
       if (btnEl) btnEl.classList.add('active');
-      if (modId !== 'mod_cartera' && !BOT_DATA) {
+      if (modId === 'mod_agenda') {
+        cargarAgendaWeb();
+      } else if (modId === 'mod_whatsapp') {
+        cargarWhatsappCrm();
+      } else if (modId === 'mod_robot') {
+        cargarBitacoraRobot();
+      } else if (modId !== 'mod_cartera' && !BOT_DATA) {
         cargarBotOverview();
       }
     }
@@ -3332,9 +3415,53 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
     }
 
     // =========================================================================
-    // MÓDULO 7: BOT DE AGENDA Y GOOGLE CALENDAR INTEGRADO
+    // MÓDULO 7: BOT DE AGENDA, GOOGLE CALENDAR Y BAÚL DIGITAL INTEGRADO
     // =========================================================================
     let AGENDA_DATA = null;
+
+    function leerTokenCalendarArchivo(inputEl) {
+      if (!inputEl.files || !inputEl.files.length) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const el = document.getElementById('ag_cfg_gcal');
+        if (el) el.value = ev.target.result || '';
+      };
+      reader.readAsText(inputEl.files[0]);
+    }
+
+    async function conectarAgendaTelegramYCalendar() {
+      const tg_token = (document.getElementById('ag_cfg_token') || {}).value.trim() || '';
+      const chat_id = (document.getElementById('ag_cfg_chat') || {}).value.trim() || '1567561963';
+      const calendar_token_json = (document.getElementById('ag_cfg_gcal') || {}).value.trim() || '';
+      const toast = document.getElementById('agConfigToast');
+
+      toast.className = 'status-toast ok';
+      toast.textContent = '⏳ Conectando Bot de Agenda Telegram + Google Calendar y sincronizando eventos...';
+
+      try {
+        const res = await fetch('/api/bot/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'agenda_conectar_config',
+            tg_token,
+            chat_id,
+            calendar_token_json
+          })
+        });
+        const data = await res.json();
+        toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+        toast.textContent = (data.ok ? '✅ ' : '⚠️ ') + (data.message || '');
+        if (document.getElementById('ag_chat_id') && chat_id) {
+          document.getElementById('ag_chat_id').value = chat_id;
+        }
+        cargarAgendaWeb();
+      } catch (err) {
+        toast.className = 'status-toast err';
+        toast.textContent = '❌ Error: ' + err;
+      }
+    }
+
     async function cargarAgendaWeb() {
       try {
         const res = await fetch('/api/bot/agenda');
@@ -3343,13 +3470,23 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
         AGENDA_DATA = data;
         const ka = data.kpis;
         const bAg = document.getElementById('nav_badge_agenda');
-        if (bAg) bAg.textContent = `${ka.total_hoy} Hoy • ${ka.total_semana} Sem.`;
+        if (bAg) bAg.textContent = `${ka.total_hoy} Hoy • ${ka.total_baul || 0} Baúl`;
         const lblHoy = document.getElementById('lblFechaHoyAgenda');
         if (lblHoy) lblHoy.textContent = data.fecha_hoy;
         const gcalBadge = document.getElementById('gcalStatusBadge');
         if (gcalBadge) {
-          gcalBadge.className = data.calendar_conectado ? 'badge badge-success' : 'badge badge-purple';
-          gcalBadge.textContent = data.calendar_conectado ? '🟢 Google Calendar Sincronizado' : '🟣 Agenda CEA + Bot Telegram Activo';
+          const calStr = data.calendar_conectado ? '🟢 Calendar Conectado' : '🟡 Calendar Local';
+          const tgStr = data.bot_token_configurado ? '🟢 Bot TG Activo' : '🔴 Falta Token TG';
+          gcalBadge.className = (data.calendar_conectado && data.bot_token_configurado) ? 'badge badge-success' : 'badge badge-purple';
+          gcalBadge.textContent = `${calStr} • ${tgStr}`;
+        }
+        if (data.chat_id_actual) {
+          if (document.getElementById('ag_cfg_chat') && !document.getElementById('ag_cfg_chat').value) {
+            document.getElementById('ag_cfg_chat').value = data.chat_id_actual;
+          }
+          if (document.getElementById('ag_chat_id') && !document.getElementById('ag_chat_id').value) {
+            document.getElementById('ag_chat_id').value = data.chat_id_actual;
+          }
         }
 
         const kpiEl = document.getElementById('kpiAgendaGrid');
@@ -3358,22 +3495,22 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
             <div class="kpi-card">
               <div class="kpi-label">☀️ Actividades para Hoy (${data.fecha_hoy})</div>
               <div class="kpi-value" style="color:#60a5fa;">${ka.total_hoy} Eventos</div>
-              <div class="kpi-sub">Con recordatorio automático a Telegram</div>
+              <div class="kpi-sub">Con recordatorio automático a Telegram (10m antes)</div>
             </div>
             <div class="kpi-card purple">
               <div class="kpi-label">📅 Eventos Próximos 7 Días</div>
               <div class="kpi-value" style="color:#c4b5fd;">${ka.total_semana} Eventos</div>
-              <div class="kpi-sub">Sincronizados con el Bot de Agenda</div>
+              <div class="kpi-sub">Sincronizados con Google Calendar y Bot</div>
             </div>
             <div class="kpi-card success">
-              <div class="kpi-label">🔁 Rutinas Diarias del CEA</div>
-              <div class="kpi-value" style="color:#34d399;">${ka.recurrentes_diarios} Diarias</div>
-              <div class="kpi-sub">Auditoría, Remarketing y Cierres</div>
+              <div class="kpi-label">🔁 Rutinas Diarias + Puntuales</div>
+              <div class="kpi-value" style="color:#34d399;">${ka.recurrentes_diarios} Diarias • ${ka.puntuales} Punt.</div>
+              <div class="kpi-sub">Auditoría, Remarketing y Reuniones</div>
             </div>
             <div class="kpi-card warning">
-              <div class="kpi-label">📌 Eventos Puntuales</div>
-              <div class="kpi-value" style="color:#fde68a;">${ka.puntuales} Puntuales</div>
-              <div class="kpi-sub">Reuniones, RUNT, CRC y Gestión</div>
+              <div class="kpi-label">🗄️ Elementos en Baúl Digital</div>
+              <div class="kpi-value" style="color:#fde68a;">${ka.total_baul || 0} Guardados</div>
+              <div class="kpi-sub">Sincronizados con <code>/baul</code> en Telegram</div>
             </div>
           `;
         }
@@ -3415,6 +3552,23 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
             </tr>`;
           }).join('') || '<tr><td colspan="8" style="text-align:center; color:var(--muted);">No hay eventos programados en los próximos 7 días.</td></tr>';
         }
+
+        const tbBaul = document.getElementById('baulTbody');
+        if (tbBaul) {
+          tbBaul.innerHTML = (data.baul_items || []).map(b => `<tr>
+            <td><span class="badge badge-purple">${b.categoria || 'NOTA'}</span></td>
+            <td><b>${b.titulo || ''}</b></td>
+            <td style="white-space:normal; max-width:420px;">${b.contenido || ''}</td>
+            <td><code>${b.fecha || ''}</code></td>
+            <td><span class="badge badge-info">${b.origen || 'Web'}</span></td>
+            <td>
+              <div style="display:flex; gap:5px;">
+                <button type="button" class="btn btn-primary" style="padding:4px 8px; font-size:11px;" onclick="enviarItemBaulTelegramWeb('${b.id}')">✈️ Enviar a TG</button>
+                <button type="button" class="btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="eliminarItemBaulWeb('${b.id}')">🗑️</button>
+              </div>
+            </td>
+          </tr>`).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--muted);">Tu Baúl Digital está vacío. Agrega una nota arriba o escribe <code>/baul</code> en el Bot de Telegram.</td></tr>';
+        }
       } catch (err) {
         console.error('Error cargando agenda:', err);
       }
@@ -3455,7 +3609,7 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
     }
 
     async function recordarEventoTelegramWeb(titulo, fecha, hora, responsable) {
-      const chat_id = (document.getElementById('ag_chat_id') || {}).value || '';
+      const chat_id = (document.getElementById('ag_chat_id') || {}).value || (document.getElementById('ag_cfg_chat') || {}).value || '1567561963';
       const res = await fetch('/api/bot/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3470,6 +3624,52 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'agenda_eliminar_evento', id })
+      });
+      cargarAgendaWeb();
+    }
+
+    async function guardarItemBaulWeb() {
+      const categoria = document.getElementById('baul_cat').value;
+      const titulo = document.getElementById('baul_titulo').value.trim();
+      const contenido = document.getElementById('baul_contenido').value.trim();
+      const chat_id = (document.getElementById('ag_cfg_chat') || {}).value || '1567561963';
+      const toast = document.getElementById('baulToast');
+      if (!titulo && !contenido) {
+        toast.className = 'status-toast err';
+        toast.textContent = '⚠️ Escribe el título y el contenido para guardar en el Baúl.';
+        return;
+      }
+      const res = await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'baul_guardar_item', categoria, titulo, contenido, chat_id })
+      });
+      const data = await res.json();
+      toast.className = data.ok ? 'status-toast ok' : 'status-toast err';
+      toast.textContent = (data.ok ? '✅ ' : '❌ ') + (data.message || '');
+      if (data.ok) {
+        document.getElementById('baul_titulo').value = '';
+        document.getElementById('baul_contenido').value = '';
+        cargarAgendaWeb();
+      }
+    }
+
+    async function enviarItemBaulTelegramWeb(id) {
+      const chat_id = (document.getElementById('ag_cfg_chat') || {}).value || '1567561963';
+      const res = await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'baul_enviar_telegram', id, chat_id })
+      });
+      const data = await res.json();
+      alert((data.ok ? '✅ ' : '⚠️ ') + (data.message || ''));
+    }
+
+    async function eliminarItemBaulWeb(id) {
+      await fetch('/api/bot/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'baul_eliminar_item', id })
       });
       cargarAgendaWeb();
     }
@@ -4368,6 +4568,15 @@ class AuditorWebHandler(BaseHTTPRequestHandler):
                 self._send_json(res_arch)
                 return
 
+            if action == "agenda_conectar_config":
+                res_cfg = bot_agenda_cea.configurar_credenciales_agenda_en_vivo(
+                    tg_token=str(payload.get("tg_token", "")).strip(),
+                    chat_id=str(payload.get("chat_id", "")).strip(),
+                    calendar_token_json=str(payload.get("calendar_token_json", "")).strip(),
+                )
+                self._send_json(res_cfg)
+                return
+
             if action == "agenda_crear_evento":
                 ok_ev, msg_ev = bot_agenda_cea.crear_evento_agenda(
                     titulo=str(payload.get("titulo") or payload.get("summary") or "").strip(),
@@ -4397,6 +4606,33 @@ class AuditorWebHandler(BaseHTTPRequestHandler):
                     chat_id=str(payload.get("chat_id", "")).strip(),
                 )
                 self._send_json({"ok": ok_tg, "message": msg_tg})
+                return
+
+            if action == "baul_guardar_item":
+                ok_b, msg_b = bot_agenda_cea.guardar_item_baul(
+                    titulo=str(payload.get("titulo", "")).strip(),
+                    contenido=str(payload.get("contenido", "")).strip(),
+                    categoria=str(payload.get("categoria", "NOTA")).strip(),
+                    origen="Dashboard Web",
+                    notificar_tg=True,
+                    chat_id=str(payload.get("chat_id", "")).strip(),
+                )
+                self._send_json({"ok": ok_b, "message": msg_b})
+                return
+
+            if action == "baul_eliminar_item":
+                ok_bd, msg_bd = bot_agenda_cea.eliminar_item_baul(
+                    item_id=str(payload.get("id", "")).strip()
+                )
+                self._send_json({"ok": ok_bd, "message": msg_bd})
+                return
+
+            if action == "baul_enviar_telegram":
+                ok_bt, msg_bt = bot_agenda_cea.enviar_item_baul_telegram(
+                    item_id=str(payload.get("id", "")).strip(),
+                    chat_id=str(payload.get("chat_id", "")).strip(),
+                )
+                self._send_json({"ok": ok_bt, "message": msg_bt})
                 return
 
             if action == "wa_registrar_lead":
